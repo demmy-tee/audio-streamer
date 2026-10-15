@@ -1,0 +1,88 @@
+name: CI Quality Gate
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
+
+jobs:
+
+  backend-checks:
+    name: Backend Lint & Tests
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: "pip"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          if [ -f backend/requirements.txt ]; then pip install -r backend/requirements.txt; fi
+          pip install ruff pytest pytest-asyncio
+
+      - name: Run Ruff (Linter & Code Style)
+        run: |
+          ruff check backend/
+
+      - name: Run Pytest Suite
+        run: |
+          if [ -d backend/app/tests ]; then
+            pytest backend/app/tests/ -v
+          fi
+
+
+  frontend-checks:
+    name: Frontend Typecheck & Build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: "npm"
+          cache-dependency-path: frontend/package.json
+
+      - name: Install dependencies
+        working-directory: ./frontend
+        run: |
+          if [ -f package.json ]; then npm ci || npm install; fi
+
+      - name: TypeScript Typecheck
+        working-directory: ./frontend
+        run: |
+          if [ -f tsconfig.json ]; then npx tsc --noEmit; fi
+
+ 
+  docker-checks:
+    name: Verify Docker Builds
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Test Build Backend API Dockerfile
+        uses: docker/build-push-action@v5
+        with:
+          context: ./backend
+          file: ./backend/Dockerfile.api
+          push: false
+
+      - name: Test Build Worker Dockerfile
+        uses: docker/build-push-action@v5
+        with:
+          context: ./backend
+          file: ./backend/Dockerfile.worker
+          push: false
