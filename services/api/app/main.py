@@ -1,14 +1,15 @@
-from contextlib import asynccontextmanager
 import logging
+from contextlib import asynccontextmanager
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.config import get_settings
-from app.db.session import engine, Base
 import app.db.models  # noqa: F401 - ensure models are registered with Base metadata
-from app.storage import storage_service
+from app.config import get_settings
+from app.db.session import Base, engine
 from app.routes.audio import router as audio_router
 from app.routes.conversations import router as conversations_router
+from app.storage import storage_service
 
 logger = logging.getLogger("api-main")
 settings = get_settings()
