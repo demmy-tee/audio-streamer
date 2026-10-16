@@ -11,7 +11,9 @@ volumes:
   redis_data:
 
 services:
-
+  # ----------------------------------------------------------------------------
+  # 1. PostgreSQL 16 - Relational Metadata & Audit Store
+  # ----------------------------------------------------------------------------
   postgres:
     image: postgres:16-alpine
     container_name: audio-postgres
@@ -32,7 +34,9 @@ services:
     networks:
       - audio-network
 
- 
+  # ----------------------------------------------------------------------------
+  # 2. Redis 7.2 - Task Broker & Audio SHA-256 Fingerprint Cache
+  # ----------------------------------------------------------------------------
   redis:
     image: redis:7.2-alpine
     container_name: audio-redis
@@ -49,7 +53,9 @@ services:
     networks:
       - audio-network
 
- 
+  # ----------------------------------------------------------------------------
+  # 3. MinIO - S3 Compatible Object Storage for Audio & Range Streaming
+  # ----------------------------------------------------------------------------
   minio:
     image: minio/minio:latest
     container_name: audio-minio
@@ -71,11 +77,13 @@ services:
     networks:
       - audio-network
 
- 
+  # ----------------------------------------------------------------------------
+  # 4. Backend Web API (FastAPI) - REST API & HTTP 206 Audio Range Streaming
+  # ----------------------------------------------------------------------------
   api:
     build:
-      context: ./backend
-      dockerfile: Dockerfile.api
+      context: ./services/api
+      dockerfile: Dockerfile
     container_name: audio-api
     restart: unless-stopped
     ports:
@@ -100,15 +108,17 @@ services:
       minio:
         condition: service_healthy
     volumes:
-      - ./backend:/app
+      - ./services/api:/app
     networks:
       - audio-network
 
-
+  # ----------------------------------------------------------------------------
+  # 5. Background Worker - Whisper STT & LLM Commitment Extraction
+  # ----------------------------------------------------------------------------
   worker:
     build:
-      context: ./backend
-      dockerfile: Dockerfile.worker
+      context: ./services/worker
+      dockerfile: Dockerfile
     container_name: audio-worker
     restart: unless-stopped
     environment:
@@ -130,14 +140,16 @@ services:
       minio:
         condition: service_healthy
     volumes:
-      - ./backend:/app
+      - ./services/worker:/app
     networks:
       - audio-network
 
-  
+  # ----------------------------------------------------------------------------
+  # 6. Frontend (Next.js 16) - Interactive Player & Commitments Dashboard
+  # ----------------------------------------------------------------------------
   frontend:
     build:
-      context: ./frontend
+      context: ./services/frontend
       dockerfile: Dockerfile
     container_name: audio-frontend
     restart: unless-stopped
@@ -148,7 +160,7 @@ services:
     depends_on:
       - api
     volumes:
-      - ./frontend:/app
+      - ./services/frontend:/app
       - /app/node_modules
       - /app/.next
     networks:
