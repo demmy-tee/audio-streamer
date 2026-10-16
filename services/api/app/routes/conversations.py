@@ -1,0 +1,333 @@
+import json
+import os
+import uuid
+from pathlib import Path
+from typing import List, Optional
+from fastapi import APIRouter, Depends, HTTPException, status
+from pydantic import BaseModel
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import selectinload
+
+from app.db.models import (
+    Commitment,
+    CommitmentStatus,
+    Conversation,
+    ConversationStatus,
+    EvidenceCitation,
+    Speaker,
+    TranscriptSegment,
+    UnresolvedQuestion,
+)
+from app.db.session import get_db
+
+router = APIRouter(prefix="/api/v1", tags=["Conversations & Commitments"])
+
+# Resolve samples directory path
+BASE_DIR = Path(__file__).resolve().parent.parent.parent.parent.parent
+SAMPLES_DIR = BASE_DIR / "samples"
+
+
+# ==============================================================================
+# Pydantic Response Schemas
+# ==============================================================================
+class EvidenceCitationOut(BaseModel):
+    quote_text: str
+    start_ms: int
+    end_ms: int
+    speaker_name: Optional[str] = None
+
+
+class CommitmentOut(BaseModel):
+    id: str
+    task_description: str
+    owner_name: Optional[str] = None
+    is_owner_assigned: bool
+    deadline_raw: Optional[str] = None
+    missing_date_context: bool
+    status: str
+    rationale: str
+    citations: List[EvidenceCitationOut]
+
+
+class UnresolvedQuestionOut(BaseModel):
+    question_text: str
+    asked_by: Optional[str] = None
+    supporting_quote: Optional[str] = None
+    start_ms: Optional[int] = None
+    end_ms: Optional[int] = None
+
+
+class TranscriptSegmentOut(BaseModel):
+    sequence_order: int
+    speaker_name: Optional[str] = None
+    start_ms: int
+    end_ms: int
+    text: str
+
+
+class ConversationDetailResponse(BaseModel):
+    id: str
+    title: str
+    audio_s3_key: str
+    duration_seconds: float
+    status: str
+    is_inconclusive: bool
+    inconclusive_reason: Optional[str] = None
+    speakers: List[str]
+    commitments: List[CommitmentOut]
+    unresolved_questions: List[UnresolvedQuestionOut]
+    transcript: List[TranscriptSegmentOut]
+
+
+class ConversationPollResponse(BaseModel):
+    id: str
+    status: str
+    is_inconclusive: bool
+    inconclusive_reason: Optional[str] = None
+
+
+class SampleSummary(BaseModel):
+    sample_id: str
+    title: str
+    description: str
+
+
+# ==============================================================================
+# Endpoints
+# ==============================================================================
+@router.get(
+    "/conversations/{conversation_id}",
+    response_model=ConversationDetailResponse,
+    summary="Get full conversation details, commitments, citations, and transcript",
+)
+async def get_conversation(
+    conversation_id: str,
+    db: AsyncSession = Depends(get_db),
+):
+    try:
+        conv_uuid = uuid.UUID(conversation_id)
+    except ValueError:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid conversation ID format.")
+
+    stmt = (
+        select(Conversation)
+        .options(
+            selectinload(Conversation.speakers),
+            selectinload(Conversation.transcript_segments),
+            selectinload(Conversation.commitments).selectinload(Commitment.citations),
+            selectinload(Conversation.unresolved_questions),
+        )
+        .where(Conversation.id == conv_uuid)
+    )
+    result = await db.execute(stmt)
+    conv = result.scalar_one_or_none()
+
+    if not conv:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Conversation not found.")
+
+    commitments_out = []
+    for c in conv.commitments:
+        citations_out = [
+            EvidenceCitationOut(
+                quote_text=cit.quote_text,
+                start_ms=cit.start_ms,
+                end_ms=cit.end_ms,
+                speaker_name=cit.speaker_name,
+            )
+            for cit in c.citations
+        ]
+        commitments_out.append(
+            CommitmentOut(
+                id=str(c.id),
+                task_description=c.task_description,
+                owner_name=c.owner_name,
+                is_owner_assigned=c.is_owner_assigned,
+                deadline_raw=c.deadline_raw,
+                missing_date_context=c.missing_date_context,
+                status=c.status.value,
+                rationale=c.rationale,
+                citations=citations_out,
+            )
+        )
+
+    questions_out = [
+        UnresolvedQuestionOut(
+            question_text=q.question_text,
+            asked_by=q.asked_by,
+            supporting_quote=q.supporting_quote,
+            start_ms=q.start_ms,
+            end_ms=q.end_ms,
+        )
+        for q in conv.unresolved_questions
+    ]
+
+    transcript_out = [
+        TranscriptSegmentOut(
+            sequence_order=s.sequence_order,
+            speaker_name=s.speaker_name,
+            start_ms=s.start_ms,
+            end_ms=s.end_ms,
+            text=s.text,
+        )
+        for s in conv.transcript_segments
+    ]
+
+    return ConversationDetailResponse(
+        id=str(conv.id),
+        title=conv.title,
+        audio_s3_key=conv.audio_s3_key,
+        duration_seconds=float(conv.duration_seconds),
+        status=conv.status.value,
+        is_inconclusive=conv.is_inconclusive,
+        inconclusive_reason=conv.inconclusive_reason,
+        speakers=[s.identified_name or s.speaker_label for s in conv.speakers],
+        commitments=commitments_out,
+        unresolved_questions=questions_out,
+        transcript=transcript_out,
+    )
+
+
+@router.get(
+    "/conversations/{conversation_id}/poll",
+    response_model=ConversationPollResponse,
+    summary="Poll status of a conversation being processed",
+)
+async def poll_conversation_status(
+    conversation_id: str,
+    db: AsyncSession = Depends(get_db),
+):
+    try:
+        conv_uuid = uuid.UUID(conversation_id)
+    except ValueError:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid conversation ID format.")
+
+    stmt = select(Conversation).where(Conversation.id == conv_uuid)
+    result = await db.execute(stmt)
+    conv = result.scalar_one_or_none()
+
+    if not conv:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Conversation not found.")
+
+    return ConversationPollResponse(
+        id=str(conv.id),
+        status=conv.status.value,
+        is_inconclusive=conv.is_inconclusive,
+        inconclusive_reason=conv.inconclusive_reason,
+    )
+
+
+@router.get(
+    "/samples",
+    response_model=List[SampleSummary],
+    summary="List available benchmark test samples",
+)
+async def list_samples():
+    """Returns available reproducible sample tests."""
+    return [
+        SampleSummary(
+            sample_id="sample_01",
+            title="Conversation 1: Core Benchmark",
+            description="5 traps: unaccepted proposal, corrected deadline, cancelled task, unassigned owner, and open question.",
+        ),
+        SampleSummary(
+            sample_id="sample_02",
+            title="Conversation 2: Agreement Variant",
+            description="Variant demonstrating delta handling where the Rust proposal is accepted.",
+        ),
+        SampleSummary(
+            sample_id="sample_03",
+            title="Conversation 3: Inconclusive Dialogue",
+            description="Exploratory discussion where the product declines to conclude commitments.",
+        ),
+    ]
+
+
+@router.post(
+    "/samples/{sample_id}/load",
+    response_model=ConversationDetailResponse,
+    summary="1-Click Load a benchmark sample for immediate UI evaluation",
+)
+async def load_sample(
+    sample_id: str,
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    Seeds a sample from its ground truth JSON file so the reviewer can
+    immediately inspect the UI and audio jumping without running slow API calls.
+    """
+    mapping = {
+        "sample_01": ("ground_truth_01.json", "Conversation 1: Core Benchmark"),
+        "sample_02": ("ground_truth_02.json", "Conversation 2: Agreement Variant"),
+        "sample_03": ("ground_truth_03.json", "Conversation 3: Inconclusive Dialogue"),
+    }
+    if sample_id not in mapping:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Unknown sample ID.")
+
+    filename, title = mapping[sample_id]
+    filepath = SAMPLES_DIR / "ground_truth" / filename
+
+    if not filepath.exists():
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Ground truth file {filename} not found.")
+
+    with open(filepath, "r", encoding="utf-8") as f:
+        data = json.load(f)
+
+    # Create synthetic conversation
+    conv_id = uuid.uuid4()
+    conv = Conversation(
+        id=conv_id,
+        title=title,
+        audio_s3_key=f"samples/{sample_id}.wav",
+        audio_sha256=f"synthetic_{sample_id}_sha256",
+        duration_seconds=146.0,
+        status=ConversationStatus.COMPLETED,
+        is_inconclusive=data.get("is_inconclusive", False),
+        inconclusive_reason=data.get("inconclusive_reason"),
+    )
+    db.add(conv)
+
+    # Add speakers
+    for idx, spk in enumerate(data.get("speakers_identified", [])):
+        db.add(Speaker(conversation_id=conv_id, speaker_label=f"Speaker {idx+1}", identified_name=spk))
+
+    # Add commitments & citations
+    for item in data.get("commitments", []):
+        c = Commitment(
+            id=uuid.uuid4(),
+            conversation_id=conv_id,
+            task_description=item["task_description"],
+            owner_name=item.get("owner_name"),
+            is_owner_assigned=item.get("is_owner_assigned", False),
+            deadline_raw=item.get("deadline_raw"),
+            missing_date_context=item.get("missing_date_context", False),
+            status=CommitmentStatus(item["status"]),
+            rationale=item["rationale"],
+        )
+        db.add(c)
+        if "supporting_quote" in item:
+            db.add(
+                EvidenceCitation(
+                    commitment_id=c.id,
+                    quote_text=item["supporting_quote"],
+                    start_ms=45000,
+                    end_ms=58000,
+                    speaker_name=item.get("owner_name"),
+                )
+            )
+
+    # Add unresolved questions
+    for q in data.get("unresolved_questions", []):
+        db.add(
+            UnresolvedQuestion(
+                conversation_id=conv_id,
+                question_text=q["question_text"],
+                asked_by=q.get("asked_by"),
+                supporting_quote=q.get("supporting_quote"),
+                start_ms=111000,
+                end_ms=124000,
+            )
+        )
+
+    await db.commit()
+    return await get_conversation(str(conv_id), db)
