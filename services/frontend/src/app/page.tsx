@@ -7,8 +7,14 @@ import { CommitmentCard } from "../components/CommitmentCard";
 import { UnresolvedQuestions } from "../components/UnresolvedQuestions";
 import { SampleSelector } from "../components/SampleSelector";
 import { AudioUploader } from "../components/AudioUploader";
+import {
+  fetchConversation,
+  fetchSamples,
+  getAudioStreamUrl,
+  loadSample,
+  pollConversationStatus,
+} from "../lib/api";
 import { ConversationDetail, SampleSummary } from "../types";
-import { fetchConversation, fetchSamples, getAudioStreamUrl, loadSample } from "../lib/api";
 
 export default function DashboardPage() {
   const [samples, setSamples] = useState<SampleSummary[]>([]);
@@ -17,6 +23,14 @@ export default function DashboardPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [activeTimeMs, setActiveTimeMs] = useState<number | null>(null);
   const [activeTab, setActiveTab] = useState<"commitments" | "proposals">("commitments");
+  const [toastMessage, setToastMessage] = useState<string | null>(null);
+
+  const showToast = (msg: string) => {
+    setToastMessage(msg);
+    setTimeout(() => {
+      setToastMessage((current) => (current === msg ? null : current));
+    }, 4000);
+  };
 
   // Load samples on mount
   useEffect(() => {
@@ -51,10 +65,31 @@ export default function DashboardPage() {
     setSelectedSampleId(null);
     setIsLoading(true);
     try {
+      // Poll worker status until completed or failed
+      const maxAttempts = 40;
+      for (let i = 0; i < maxAttempts; i++) {
+        await new Promise((r) => setTimeout(r, 1500));
+        const poll = await pollConversationStatus(conversationId);
+        if (poll.status === "COMPLETED") {
+          break;
+        } else if (poll.status === "FAILED") {
+          if (poll.inconclusive_reason?.toLowerCase().includes("api key")) {
+            showToast("Missing API key");
+          } else {
+            showToast("Processing failed");
+          }
+          break;
+        }
+      }
+
       const data = await fetchConversation(conversationId);
       setConversation(data);
+      if (data.inconclusive_reason?.toLowerCase().includes("api key")) {
+        showToast("Missing API key");
+      }
     } catch (err) {
       console.error("Could not fetch conversation:", err);
+      showToast("Error processing audio");
     } finally {
       setIsLoading(false);
     }
@@ -127,7 +162,7 @@ export default function DashboardPage() {
       )}
 
       {/* Inconclusive Warning */}
-      {!isLoading && conversation?.is_inconclusive && (
+      {!isLoading && conversation?.is_inconclusive && !conversation?.inconclusive_reason?.toLowerCase().includes("api key") && (
         <div className="bg-amber-50 border border-amber-200 rounded-lg p-5 mb-6 text-xs text-amber-900">
           <div className="flex items-center gap-2 font-semibold text-sm text-amber-950 mb-1">
             <AlertTriangle className="w-4 h-4 text-amber-600" />
@@ -228,6 +263,14 @@ export default function DashboardPage() {
               onJumpToQuote={handleJumpToQuote}
             />
           </div>
+        </div>
+      )}
+
+      {/* Minimal Toast Notification */}
+      {toastMessage && (
+        <div className="fixed bottom-5 right-5 z-50 flex items-center gap-2 bg-slate-900 text-white text-xs font-medium px-4 py-2.5 rounded-lg shadow-xl border border-slate-800 transition-all">
+          <AlertTriangle className="w-3.5 h-3.5 text-amber-400 shrink-0" />
+          <span>{toastMessage}</span>
         </div>
       )}
     </div>

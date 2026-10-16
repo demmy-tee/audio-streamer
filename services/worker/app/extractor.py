@@ -1,6 +1,7 @@
 import json
 import logging
 from typing import List, Literal, Optional
+
 from pydantic import BaseModel, Field
 
 from app.config import get_settings
