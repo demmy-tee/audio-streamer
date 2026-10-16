@@ -1,7 +1,7 @@
 import json
 import uuid
 from pathlib import Path
-from typing import List, Optional
+
 from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel
 from sqlalchemy import select
@@ -15,7 +15,6 @@ from app.db.models import (
     ConversationStatus,
     EvidenceCitation,
     Speaker,
-    TranscriptSegment,
     UnresolvedQuestion,
 )
 from app.db.session import get_db
@@ -34,32 +33,32 @@ class EvidenceCitationOut(BaseModel):
     quote_text: str
     start_ms: int
     end_ms: int
-    speaker_name: Optional[str] = None
+    speaker_name: str | None = None
 
 
 class CommitmentOut(BaseModel):
     id: str
     task_description: str
-    owner_name: Optional[str] = None
+    owner_name: str | None = None
     is_owner_assigned: bool
-    deadline_raw: Optional[str] = None
+    deadline_raw: str | None = None
     missing_date_context: bool
     status: str
     rationale: str
-    citations: List[EvidenceCitationOut]
+    citations: list[EvidenceCitationOut]
 
 
 class UnresolvedQuestionOut(BaseModel):
     question_text: str
-    asked_by: Optional[str] = None
-    supporting_quote: Optional[str] = None
-    start_ms: Optional[int] = None
-    end_ms: Optional[int] = None
+    asked_by: str | None = None
+    supporting_quote: str | None = None
+    start_ms: int | None = None
+    end_ms: int | None = None
 
 
 class TranscriptSegmentOut(BaseModel):
     sequence_order: int
-    speaker_name: Optional[str] = None
+    speaker_name: str | None = None
     start_ms: int
     end_ms: int
     text: str
@@ -72,18 +71,18 @@ class ConversationDetailResponse(BaseModel):
     duration_seconds: float
     status: str
     is_inconclusive: bool
-    inconclusive_reason: Optional[str] = None
-    speakers: List[str]
-    commitments: List[CommitmentOut]
-    unresolved_questions: List[UnresolvedQuestionOut]
-    transcript: List[TranscriptSegmentOut]
+    inconclusive_reason: str | None = None
+    speakers: list[str]
+    commitments: list[CommitmentOut]
+    unresolved_questions: list[UnresolvedQuestionOut]
+    transcript: list[TranscriptSegmentOut]
 
 
 class ConversationPollResponse(BaseModel):
     id: str
     status: str
     is_inconclusive: bool
-    inconclusive_reason: Optional[str] = None
+    inconclusive_reason: str | None = None
 
 
 class SampleSummary(BaseModel):
@@ -218,7 +217,7 @@ async def poll_conversation_status(
 
 @router.get(
     "/samples",
-    response_model=List[SampleSummary],
+    response_model=list[SampleSummary],
     summary="List available benchmark test samples",
 )
 async def list_samples():
@@ -269,7 +268,7 @@ async def load_sample(
     if not filepath.exists():
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Ground truth file {filename} not found.")
 
-    with open(filepath, "r", encoding="utf-8") as f:
+    with open(filepath, encoding="utf-8") as f:
         data = json.load(f)
 
     # Create synthetic conversation

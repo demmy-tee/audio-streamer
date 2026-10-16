@@ -1,5 +1,5 @@
 import uuid
-from typing import Optional
+
 from fastapi import APIRouter, Depends, File, Header, HTTPException, UploadFile, status
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
@@ -107,7 +107,7 @@ async def upload_audio(
 )
 async def stream_audio(
     conversation_id: str,
-    range_header: Optional[str] = Header(None, alias="Range"),
+    range_header: str | None = Header(None, alias="Range"),
     db: AsyncSession = Depends(get_db),
 ):
     """
