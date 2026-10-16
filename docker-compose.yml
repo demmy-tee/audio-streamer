@@ -86,6 +86,7 @@ services:
       dockerfile: Dockerfile
     container_name: audio-api
     restart: unless-stopped
+    command: ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--reload"]
     ports:
       - "8000:8000"
     environment:
@@ -109,6 +110,7 @@ services:
         condition: service_healthy
     volumes:
       - ./services/api:/app
+      - ./samples:/samples
     networks:
       - audio-network
 
@@ -141,6 +143,7 @@ services:
         condition: service_healthy
     volumes:
       - ./services/worker:/app
+      - ./samples:/samples
     networks:
       - audio-network
 
@@ -153,10 +156,12 @@ services:
       dockerfile: Dockerfile
     container_name: audio-frontend
     restart: unless-stopped
+    command: ["npm", "run", "dev"]
     ports:
       - "3000:3000"
     environment:
       - NEXT_PUBLIC_API_URL=http://localhost:8000
+      - WATCHPACK_POLLING=true
     depends_on:
       - api
     volumes:
