@@ -1,6 +1,7 @@
 import hashlib
 import logging
-from typing import AsyncGenerator, Optional, Tuple
+from collections.abc import AsyncGenerator
+
 import aioboto3
 from botocore.exceptions import ClientError
 
@@ -48,7 +49,7 @@ class StorageService:
         file_bytes: bytes,
         s3_key: str,
         content_type: str = "audio/wav",
-    ) -> Tuple[str, str]:
+    ) -> tuple[str, str]:
         """Uploads audio bytes to S3/MinIO and returns (s3_key, sha256_hash)."""
         sha256_hash = hashlib.sha256(file_bytes).hexdigest()
 
@@ -67,8 +68,8 @@ class StorageService:
     async def get_audio_stream(
         self,
         s3_key: str,
-        byte_range: Optional[str] = None,
-    ) -> Tuple[AsyncGenerator[bytes, None], int, int, int]:
+        byte_range: str | None = None,
+    ) -> tuple[AsyncGenerator[bytes, None], int, int, int]:
         """
         Streams audio bytes with HTTP 206 Range support.
         Returns: (byte_generator, start_byte, end_byte, total_file_size)
