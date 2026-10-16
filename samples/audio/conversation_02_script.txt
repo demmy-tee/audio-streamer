@@ -1,0 +1,42 @@
+[00:00 - 00:08]
+Daniel: "Good morning Elena! Daniel here. Thanks for jumping on the project sync."
+
+[00:09 - 00:15]
+Elena: "Morning Daniel! Elena here. Let's run through the action items for the audio release."
+
+[00:16 - 00:30]
+Daniel: "Great. First, we could rewrite the entire audio streaming pipeline in Rust to maximize throughput. What do you think?"
+
+[00:31 - 00:43]
+Elena: "You know what, I checked our benchmarks this morning and you are completely right. Let's do the Rust rewrite! Can you take that on?"
+Daniel: "Awesome! Yes, I will take on the Rust rewrite."
+--> [DELTA CHANGE: Now an ACCEPTED TASK! Owner: Daniel. Status: ACTIVE.]
+
+[00:44 - 00:58]
+Elena: "On the frontend side, can you also build the interactive waveform audio player with timestamp jumping?"
+Daniel: "Yes, I will take that on too. I'll build the waveform and the scrub bar."
+
+[00:59 - 01:14]
+Elena: "Can you deliver the waveform player by Tuesday at 10 AM?"
+Daniel: "I have a dentist appointment on Tuesday morning. Let's make the deadline Wednesday at 3 PM instead."
+Elena: "Wednesday at 3 PM works for me. Let's lock that in."
+
+[01:15 - 01:32]
+Elena: "I'll handle preparing the investor update slides tonight so we have them ready."
+Daniel: "Sounds good, thanks Elena."
+
+[01:33 - 01:50]
+Daniel: "Also, someone needs to configure the MinIO CORS policy and range request headers so audio scrubbing works properly in the browser."
+Elena: "Agreed, that is critical. Nobody is assigned to that yet, so let's leave it unassigned for now and pick it up tomorrow."
+
+[01:51 - 02:04]
+Elena: "Quick question: do we already have the production API keys for the Whisper transcription provider?"
+Daniel: "I'm honestly not sure, we will need to ask DevOps about that."
+
+[02:05 - 02:20]
+Elena: "Oh, before we wrap up: I just got a notification that the investor meeting was pushed to next month. So scratch the investor deck—I won't do the slides anymore."
+Daniel: "Got it, slides are cancelled."
+
+[02:21 - 02:26]
+Elena: "Awesome, let's get to work. Talk soon Daniel!"
+Daniel: "Talk soon Elena, bye!"
