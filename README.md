@@ -124,11 +124,11 @@ audio-redis      redis      Up (healthy)            0.0.0.0:6379->6379/tcp
 ```mermaid
 flowchart TD
     subgraph Client ["Client Layer (Browser)"]
-        UI["Next.js 16 Dashboard<br/>(Tailwind CSS + HTML5 Audio)"]
+        UI["Next.js 16 Dashboard<br/>Tailwind CSS + HTML5 Audio"]
     end
 
     subgraph Edge ["API Gateway & Ingestion"]
-        API["FastAPI Web Service ('audio-api')<br/>• REST API & Upload Endpoint<br/>• HTTP 206 Partial Content Streamer<br/>• HEAD Metadata Prober"]
+        API["FastAPI Web Service (audio-api)<br/>- REST API & Upload Endpoint<br/>- HTTP 206 Partial Content Streamer<br/>- HEAD Metadata Prober"]
     end
 
     subgraph Storage ["Persistent Infrastructure"]
@@ -138,19 +138,19 @@ flowchart TD
     end
 
     subgraph Processing ["Background Intelligence"]
-        Worker["Async Worker ('audio-worker')<br/>• Groq Whisper Large-v3 STT<br/>• Groq Llama/GPT Zero-Hallucination LLM<br/>• Pydantic v2 Schema Validator"]
+        Worker["Async Worker (audio-worker)<br/>- Groq Whisper Large-v3 STT<br/>- Groq Zero-Hallucination LLM<br/>- Pydantic v2 Schema Validator"]
     end
 
-    UI -->|1. Upload Audio File (Multipart)| API
-    UI -->|2. HTTP 206 Range Streaming (64KB chunks)| API
-    API -->|Write Raw Bytes| MinIO
-    API -->|Create Record (status=UPLOADED)| Postgres
-    API -->|Push Task (conv_id)| Redis
+    UI -->|"1. Upload Audio File (Multipart)"| API
+    UI -->|"2. HTTP 206 Range Streaming (64KB chunks)"| API
+    API -->|"Write Raw Bytes"| MinIO
+    API -->|"Create Record (status: UPLOADED)"| Postgres
+    API -->|"Push Task (conv_id)"| Redis
 
-    Worker <-->|Pop Next Job| Redis
-    Worker -->|Fetch Audio Stream| MinIO
-    Worker -->|Write Transcript & Commitments| Postgres
-    UI -.->|3. Poll /api/v1/conversations/{id}/poll| API
+    Redis -->|"Pop Next Job"| Worker
+    Worker -->|"Fetch Audio Stream"| MinIO
+    Worker -->|"Write Transcript & Commitments"| Postgres
+    UI -.->|"3. Poll /api/v1/conversations/{id}/poll"| API
 ```
 
 ### 1. HTTP 206 Audio Range Streaming Engine
