@@ -91,18 +91,22 @@ class StorageService:
             start_byte = max(0, start_byte)
             end_byte = min(total_size - 1, end_byte)
 
-            get_kwargs = {"Bucket": self.bucket_name, "Key": s3_key}
-            if byte_range:
-                get_kwargs["Range"] = f"bytes={start_byte}-{end_byte}"
-
-            response = await s3.get_object(**get_kwargs)
-
-            async def stream_generator():
-                async with response["Body"] as stream:
-                    while chunk := await stream.read(64 * 1024):  # 64 KB chunks
+        async def stream_generator():
+            async with self._get_client_context() as s3_stream_client:
+                get_kwargs = {"Bucket": self.bucket_name, "Key": s3_key}
+                if byte_range:
+                    get_kwargs["Range"] = f"bytes={start_byte}-{end_byte}"
+                response = await s3_stream_client.get_object(**get_kwargs)
+                body = response["Body"]
+                if hasattr(body, "content"):
+                    while chunk := await body.content.read(64 * 1024):  # 64 KB chunks
                         yield chunk
+                else:
+                    data = await body.read()
+                    if data:
+                        yield data
 
-            return stream_generator(), start_byte, end_byte, total_size
+        return stream_generator, start_byte, end_byte, total_size
 
 
 storage_service = StorageService()

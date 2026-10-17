@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
-import { CheckCircle2, AlertTriangle, FileQuestion, Ban, Loader2 } from "lucide-react";
+import { CheckCircle2, AlertTriangle, FileQuestion, Ban, Loader2, AlertCircle } from "lucide-react";
 import { AudioPlayer } from "../components/AudioPlayer";
 import { CommitmentCard } from "../components/CommitmentCard";
 import { UnresolvedQuestions } from "../components/UnresolvedQuestions";
@@ -21,7 +21,8 @@ export default function DashboardPage() {
   const [selectedSampleId, setSelectedSampleId] = useState<string | null>("sample_01");
   const [conversation, setConversation] = useState<ConversationDetail | null>(null);
   const [isLoading, setIsLoading] = useState(false);
-  const [activeTimeMs, setActiveTimeMs] = useState<number | null>(null);
+  const [processingStatus, setProcessingStatus] = useState<string | null>(null);
+  const [jumpTarget, setJumpTarget] = useState<{ timeMs: number; nonce: number } | null>(null);
   const [activeTab, setActiveTab] = useState<"commitments" | "proposals">("commitments");
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
@@ -32,7 +33,7 @@ export default function DashboardPage() {
     }, 4000);
   };
 
-  // Load samples on mount
+  // Load samples on initial mount
   useEffect(() => {
     async function init() {
       try {
@@ -51,25 +52,57 @@ export default function DashboardPage() {
   const handleSelectSample = async (sampleId: string) => {
     setSelectedSampleId(sampleId);
     setIsLoading(true);
+    setProcessingStatus("Loading benchmark...");
     try {
       const data = await loadSample(sampleId);
       setConversation(data);
     } catch (err) {
       console.error("Could not load sample:", err);
+      showToast("Failed to load benchmark sample");
     } finally {
       setIsLoading(false);
+      setProcessingStatus(null);
     }
   };
 
-  const handleUploadSuccess = async (conversationId: string) => {
+  const handleUploadStart = (fileName: string) => {
+    // Immediately hide benchmark selectors and switch to uploaded mode
     setSelectedSampleId(null);
     setIsLoading(true);
+    setProcessingStatus("Uploading audio file...");
+
+    const cleanTitle = fileName.replace(/\.[^/.]+$/, "").replace(/_/g, " ");
+    setConversation({
+      id: "",
+      title: cleanTitle,
+      audio_s3_key: "",
+      duration_seconds: 0,
+      status: "UPLOADED",
+      is_inconclusive: false,
+      inconclusive_reason: null,
+      speakers: [],
+      commitments: [],
+      unresolved_questions: [],
+      transcript: [],
+    });
+  };
+
+  const handleUploadSuccess = async (conversationId: string, title?: string) => {
+    setSelectedSampleId(null);
+    setIsLoading(true);
+    setProcessingStatus("Transcribing audio and extracting commitments...");
+
     try {
-      // Poll worker status until completed or failed
+      // 1. Immediately fetch the conversation record so audio playback is ready
+      const initialConv = await fetchConversation(conversationId);
+      setConversation(initialConv);
+
+      // 2. Poll worker status until completed or failed
       const maxAttempts = 40;
       for (let i = 0; i < maxAttempts; i++) {
         await new Promise((r) => setTimeout(r, 1500));
         const poll = await pollConversationStatus(conversationId);
+
         if (poll.status === "COMPLETED") {
           break;
         } else if (poll.status === "FAILED") {
@@ -82,9 +115,11 @@ export default function DashboardPage() {
         }
       }
 
-      const data = await fetchConversation(conversationId);
-      setConversation(data);
-      if (data.inconclusive_reason?.toLowerCase().includes("api key")) {
+      // 3. Load final extracted commitments and citations
+      const finalData = await fetchConversation(conversationId);
+      setConversation(finalData);
+
+      if (finalData.inconclusive_reason?.toLowerCase().includes("api key")) {
         showToast("Missing API key");
       }
     } catch (err) {
@@ -92,11 +127,12 @@ export default function DashboardPage() {
       showToast("Error processing audio");
     } finally {
       setIsLoading(false);
+      setProcessingStatus(null);
     }
   };
 
   const handleJumpToQuote = (startMs: number) => {
-    setActiveTimeMs(startMs);
+    setJumpTarget({ timeMs: startMs, nonce: Date.now() });
   };
 
   const activeAndCancelledCommitments =
@@ -130,42 +166,80 @@ export default function DashboardPage() {
       </header>
 
       {/* Input / Control Row */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 mb-6">
-        <div className="lg:col-span-2">
-          <SampleSelector
-            samples={samples}
-            selectedSampleId={selectedSampleId}
-            onSelectSample={handleSelectSample}
-            isLoading={isLoading}
-          />
-        </div>
-        <div>
-          <AudioUploader onUploadSuccess={handleUploadSuccess} />
-        </div>
+      <div className="mb-6">
+        {selectedSampleId !== null ? (
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+            <div className="lg:col-span-2">
+              <SampleSelector
+                samples={samples}
+                selectedSampleId={selectedSampleId}
+                onSelectSample={handleSelectSample}
+                isLoading={isLoading}
+              />
+            </div>
+            <div>
+              <AudioUploader
+                onUploadStart={handleUploadStart}
+                onUploadSuccess={handleUploadSuccess}
+              />
+            </div>
+          </div>
+        ) : (
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-4 bg-white border border-slate-200 rounded-lg p-4 shadow-sm">
+            <div className="flex-1">
+              <AudioUploader
+                onUploadStart={handleUploadStart}
+                onUploadSuccess={handleUploadSuccess}
+              />
+            </div>
+            <div className="border-t sm:border-t-0 sm:border-l border-slate-200 pt-3 sm:pt-0 sm:pl-4 flex items-center justify-end shrink-0">
+              <button
+                onClick={() => samples.length > 0 && handleSelectSample(samples[0].sample_id)}
+                className="text-xs font-semibold px-3.5 py-2 rounded-md bg-slate-100 hover:bg-slate-200 text-slate-700 transition"
+              >
+                ← View Preloaded Benchmarks
+              </button>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Audio Player Bar */}
       <div className="mb-6">
         <AudioPlayer
-          streamUrl={conversation ? getAudioStreamUrl(conversation.id) : null}
+          streamUrl={conversation && conversation.id ? getAudioStreamUrl(conversation.id) : null}
           title={conversation?.title || "No audio loaded"}
-          activeTimeMs={activeTimeMs}
+          initialDuration={conversation?.duration_seconds}
+          jumpTarget={jumpTarget}
         />
       </div>
 
-      {/* Loading State */}
+      {/* Loading / Processing State */}
       {isLoading && (
-        <div className="flex items-center justify-center p-12 bg-white border border-slate-200 rounded-lg">
+        <div className="flex items-center justify-center p-12 bg-white border border-slate-200 rounded-lg mb-6">
           <Loader2 className="w-6 h-6 animate-spin text-slate-400 mr-2" />
-          <span className="text-sm text-slate-600 font-medium">Processing conversation...</span>
+          <span className="text-sm text-slate-600 font-medium">
+            {processingStatus || "Processing conversation..."}
+          </span>
         </div>
       )}
 
-      {/* Inconclusive Warning */}
-      {!isLoading && conversation?.is_inconclusive && !conversation?.inconclusive_reason?.toLowerCase().includes("api key") && (
-        <div className="bg-amber-50 border border-amber-200 rounded-lg p-5 mb-6 text-xs text-amber-900">
+      {/* Processing Error Notice */}
+      {!isLoading && conversation?.status === "FAILED" && (
+        <div className="bg-rose-50 border border-rose-200 rounded-lg p-5 mb-6 text-xs text-rose-900 shadow-sm">
+          <div className="flex items-center gap-2 font-semibold text-sm text-rose-950 mb-1">
+            <AlertCircle className="w-4 h-4 text-rose-600 shrink-0" />
+            <span>Processing Failed</span>
+          </div>
+          <p>{conversation.inconclusive_reason || "Unable to extract commitments from this recording."}</p>
+        </div>
+      )}
+
+      {/* Inconclusive Dialogue Warning */}
+      {!isLoading && conversation?.status === "COMPLETED" && conversation?.is_inconclusive && (
+        <div className="bg-amber-50 border border-amber-200 rounded-lg p-5 mb-6 text-xs text-amber-900 shadow-sm">
           <div className="flex items-center gap-2 font-semibold text-sm text-amber-950 mb-1">
-            <AlertTriangle className="w-4 h-4 text-amber-600" />
+            <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0" />
             <span>Conversation Inconclusive (Declined to Conclude)</span>
           </div>
           <p>{conversation.inconclusive_reason}</p>

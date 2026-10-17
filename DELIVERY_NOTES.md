@@ -62,7 +62,7 @@ Measurements were conducted across 102 seconds of continuous dialogue (~1.7 audi
 
 ### 4.1 Exact AI Tools Used
 - **Transcription**: Groq Whisper Large-v3 (`whisper-large-v3`) with `response_format="verbose_json"` to capture millisecond word/segment timestamps.
-- **Reasoning**: OpenAI `gpt-4o-mini` with Pydantic v2 `response_format=ConversationAnalysisResult` (or Groq `llama-3.3-70b-versatile` with JSON schema enforcement).
+- **Reasoning**: OpenAI `gpt-4o-mini` with Pydantic v2 `response_format=ConversationAnalysisResult` (or Groq `openai/gpt-oss-120b` with JSON schema enforcement).
 
 ### 4.2 Example: How We Checked & Corrected AI Output
 During initial prompt testing, a naive prompt resulted in a hallucination on the unassigned task:

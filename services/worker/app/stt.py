@@ -48,10 +48,13 @@ class STTService:
     async def _transcribe_groq(self, audio_bytes: bytes, filename: str) -> Tuple[List[STTSegment], float]:
         from groq import AsyncGroq
 
+        if not any(filename.lower().endswith(ext) for ext in [".wav", ".mp3", ".m4a", ".ogg", ".webm", ".flac"]):
+            filename = f"{filename}.wav"
+
         client = AsyncGroq(api_key=self.settings.GROQ_API_KEY)
         audio_file = (filename, audio_bytes)
 
-        logger.info("Transcribing audio via Groq Whisper-large-v3...")
+        logger.info(f"Transcribing audio via Groq Whisper-large-v3 ({filename})...")
         response = await client.audio.transcriptions.create(
             file=audio_file,
             model="whisper-large-v3",
@@ -63,11 +66,14 @@ class STTService:
     async def _transcribe_openai(self, audio_bytes: bytes, filename: str) -> Tuple[List[STTSegment], float]:
         from openai import AsyncOpenAI
 
+        if not any(filename.lower().endswith(ext) for ext in [".wav", ".mp3", ".m4a", ".ogg", ".webm", ".flac"]):
+            filename = f"{filename}.wav"
+
         client = AsyncOpenAI(api_key=self.settings.OPENAI_API_KEY)
         audio_file = io.BytesIO(audio_bytes)
         audio_file.name = filename
 
-        logger.info("Transcribing audio via OpenAI Whisper-1...")
+        logger.info(f"Transcribing audio via OpenAI Whisper-1 ({filename})...")
         response = await client.audio.transcriptions.create(
             file=audio_file,
             model="whisper-1",

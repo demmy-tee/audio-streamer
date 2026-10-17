@@ -1,5 +1,3 @@
-version: "3.8"
-
 networks:
   audio-network:
     name: audio-network
@@ -89,6 +87,8 @@ services:
     command: ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--reload"]
     ports:
       - "8000:8000"
+    env_file:
+      - .env
     environment:
       - ENVIRONMENT=development
       - DATABASE_URL=postgresql+asyncpg://postgres:postgrespassword@postgres:5432/commitments_db
@@ -123,6 +123,8 @@ services:
       dockerfile: Dockerfile
     container_name: audio-worker
     restart: unless-stopped
+    env_file:
+      - .env
     environment:
       - ENVIRONMENT=development
       - DATABASE_URL=postgresql+asyncpg://postgres:postgrespassword@postgres:5432/commitments_db
