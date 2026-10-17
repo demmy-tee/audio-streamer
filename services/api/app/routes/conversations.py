@@ -274,13 +274,16 @@ async def load_sample(
             "conversation_01_core.wav",
             102.8,
             {
-                "Yes, I will take that on. I'll build the waveform and the scrub bar.": (44000, 58000),
-                "Nobody is assigned to that yet, so let's leave it unassigned for now and pick it up tomorrow.": (93000, 110000),
-                "So scratch the investor deck—I won't do the slides anymore.": (125000, 140000),
-                "That's overkill for our current volume. Let's stick with Python FastAPI for now. We won't do the Rust rewrite.": (31000, 43000),
+                "Yes, I will take that on. I'll build the waveform and the scrub bar.": (31940, 36060),
+                "Nobody is assigned to that yet, so let's leave it unassigned for now and pick it up tomorrow.": (66240, 72780),
+                "So scratch the investor deck—I won't do the slides anymore.": (89920, 93640),
+                "So scratch the investor deck-I won't do the slides anymore.": (89920, 93640),
+                "So scratch the investor deck, I won't do the slides anymore": (89920, 93640),
+                "That's overkill for our current volume. Let's stick with Python FastAPI for now. We won't do the Rust rewrite.": (18660, 25020),
             },
             {
-                "Quick question: do we already have the production API keys for the Whisper transcription provider?": (111000, 124000),
+                "Quick question: do we already have the production API keys for the Whisper transcription provider?": (73560, 78940),
+                "Quick question, do we already have the production API keys for the Whisper transcription provider?": (73560, 78940),
             },
         ),
         "sample_02": (
@@ -289,13 +292,17 @@ async def load_sample(
             "conversation_02_variant.wav",
             107.8,
             {
-                "Awesome! Yes, I will take on the Rust rewrite.": (38000, 41000),
-                "Yes, I will take that on too. I'll build the waveform and the scrub bar.": (41000, 43000),
-                "Nobody is assigned to that yet, so let's leave it unassigned for now and pick it up tomorrow.": (48000, 50000),
-                "So scratch the investor deck—I won't do the slides anymore.": (51000, 53000),
+                "Awesome! Yes, I will take on the Rust rewrite.": (26140, 29340),
+                "Let's do the Rust rewrite! Can you take that on? Awesome! Yes, I will take on the Rust rewrite.": (23060, 29340),
+                "Yes, I will take that on too. I'll build the waveform and the scrub bar.": (36740, 41120),
+                "Nobody is assigned to that yet, so let's leave it unassigned for now and pick it up tomorrow.": (71320, 77860),
+                "So scratch the investor deck—I won't do the slides anymore.": (95000, 98720),
+                "So scratch the investor deck-I won't do the slides anymore.": (95000, 98720),
+                "So scratch the investor deck, I won't do the slides anymore": (95000, 98720),
             },
             {
-                "Quick question: do we already have the production API keys for the Whisper transcription provider?": (50000, 52000),
+                "Quick question: do we already have the production API keys for the Whisper transcription provider?": (78620, 84020),
+                "Quick question, do we already have the production API keys for the Whisper transcription provider?": (78620, 84020),
             },
         ),
         "sample_03": (
@@ -368,7 +375,15 @@ async def load_sample(
         db.add(c)
         if "supporting_quote" in item:
             quote = item["supporting_quote"]
-            start_ms, end_ms = quote_ts.get(quote, (45000, 58000))
+            # Look up quote with exact match or normalized dashes
+            ts = quote_ts.get(quote)
+            if not ts:
+                normalized_quote = quote.replace("—", "-").replace("–", "-")
+                for k, v in quote_ts.items():
+                    if k.replace("—", "-").replace("–", "-") == normalized_quote:
+                        ts = v
+                        break
+            start_ms, end_ms = ts if ts else (31940, 36060)
             db.add(
                 EvidenceCitation(
                     commitment_id=c.id,
@@ -382,7 +397,13 @@ async def load_sample(
     # Add unresolved questions
     for q in data.get("unresolved_questions", []):
         quote = q.get("supporting_quote")
-        start_ms, end_ms = question_ts.get(quote, (111000, 124000))
+        ts = question_ts.get(quote) if quote else None
+        if not ts and quote:
+            for k, v in question_ts.items():
+                if k.lower().startswith(quote[:20].lower()):
+                    ts = v
+                    break
+        start_ms, end_ms = ts if ts else (73560, 78940)
         db.add(
             UnresolvedQuestion(
                 conversation_id=conv_id,
