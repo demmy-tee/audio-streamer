@@ -1,6 +1,7 @@
 # Audio Commitments Streamer
-> **Glynac Capture the Flag Engineering Challenge — Final Submission**  
-> An enterprise system that converts recorded project discussions into deterministic, legal-grade final commitments with zero hallucination, millisecond-accurate audio scrubbing via HTTP 206 range streaming, and automated linguistic trap isolation.
+> **Codebridge Technology, Inc. — Product Builder Test Task Submission**  
+> **Candidate:** Daniel | **Role:** Product Builder  
+> An enterprise prototype that converts recorded project discussions into deterministic, legal-grade final commitments with zero hallucination, millisecond-accurate audio scrubbing via HTTP 206 range streaming, and automated linguistic trap isolation.
 
 [![CI Quality Gate](https://github.com/demmy-tee/audio-streamer/actions/workflows/ci.yml/badge.svg)](https://github.com/demmy-tee/audio-streamer/actions/workflows/ci.yml)
 [![Docker Compose Ready](https://img.shields.io/badge/Docker_Compose-6_Services-2496ED?logo=docker&logoColor=white)](docker-compose.yml)
