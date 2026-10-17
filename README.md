@@ -37,22 +37,19 @@ The application includes 3 synthetic benchmark audio recordings generated via mu
 
 ---
 
-## Curated Engineering Backlog (Jira Traceability)
+## Core Engineering Tracks & Implementation
 
-The project was executed through an engineering backlog of epics mapping one-to-one to the architectural tracks:
+The prototype was engineered across 7 foundational tracks to satisfy the brief's functional and reliability requirements:
 
-| Ticket(s) | Engineering Track & Implementation Focus |
-| :--- | :--- |
-| **TA-1 – TA-10** | **Epics**: Audio Ingestion, RFC 7233 Streaming, STT Pipeline, Zero-Hallucination Extractor, State Machine, Waveform UI, PostgreSQL Audit Trail, Multi-Service Docker, CI Gates, Cloud Delivery. |
-| **TA-11 – TA-15** | **RFC 7233 HTTP 206 Audio Streaming**: Implemented byte-range parsing, S3 chunked streaming via `aioboto3.get_object()`, and `HEAD` method support for browser media engines. |
-| **TA-16 – TA-20** | **Sub-Second Speech-to-Text Pipeline**: Built `STTService` integrating Groq Whisper-large-v3 with `response_format="verbose_json"`, extracting millisecond segment boundaries. |
-| **TA-21 – TA-25** | **Zero-Hallucination Structured Extractor**: Authored Pydantic v2 `ConversationAnalysisResult` schema, prompt constraints, and Groq `openai/gpt-oss-120b` JSON schema enforcement. |
-| **TA-26 – TA-30** | **Proximity De-biasing**: Hardened prompt and schema against assigning task ownership based on conversational proximity (`is_owner_assigned: bool`). |
-| **TA-31 – TA-35** | **Linguistic Traps & Ground Truth**: Synthesized multi-speaker benchmark audio files (`conversation_01_core.wav`, `conversation_02_variant.wav`, `conversation_03_ambiguous.wav`) and validated ground-truth answer keys. |
-| **TA-36 – TA-40** | **Interactive Audio Scrubbing & Player**: Built Next.js HTML5 audio player with nonce-based quote jumping, pending seek queues, and reactive duration synchronization. |
-| **TA-41 – TA-45** | **Frontend UI & Card Alignment**: Eliminated text overflows on long quotations with responsive card layouts, tabbed commitment views, and instant benchmark toggling. |
-| **TA-46 – TA-50** | **Multi-Service Docker Orchestration**: Containerized 6 independent services (`api`, `worker`, `frontend`, `minio`, `postgres`, `redis`) with healthchecks and network bridge. |
-| **TA-51 – TA-55** | **CI Quality Gate**: Established GitHub Actions CI workflow enforcing `ruff check` (E, F, I rules) and multi-stage Docker build verification. |
+| Track | Architecture Domain | Implementation & Engineering Focus |
+| :--- | :--- | :--- |
+| **Track 1** | **RFC 7233 HTTP 206 Streaming** | Implemented byte-range parsing, S3 chunked streaming via `aioboto3.get_object()`, and `HEAD` method support for browser media engines. |
+| **Track 2** | **Sub-Second Speech-to-Text** | Built `STTService` integrating Groq Whisper-large-v3 with `response_format="verbose_json"`, extracting millisecond segment boundaries. |
+| **Track 3** | **Zero-Hallucination Extraction** | Authored Pydantic v2 `ConversationAnalysisResult` schema, strict prompt negative-constraints, and Groq `openai/gpt-oss-120b` JSON schema enforcement. |
+| **Track 4** | **Conversational De-biasing** | Guarded against assigning task ownership based on conversational proximity (`is_owner_assigned: bool`), isolated retracted tasks (`CANCELLED`), and preserved relative date wording. |
+| **Track 5** | **Reproducible Benchmarks** | Authored multi-speaker TTS benchmark recordings (`conversation_01_core.wav`, `conversation_02_variant.wav`, `conversation_03_ambiguous.wav`) and validated ground-truth answer keys. |
+| **Track 6** | **Interactive Audio Scrubbing** | Built Next.js HTML5 audio player with nonce-based quote jumping, pending seek queues, and reactive duration synchronization. |
+| **Track 7** | **Docker Orchestration & CI** | Containerized 6 independent services (`api`, `worker`, `frontend`, `minio`, `postgres`, `redis`) with GitHub Actions enforcing `ruff check` and Docker builds. |
 
 ---
 
