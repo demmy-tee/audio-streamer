@@ -34,8 +34,8 @@ export function UnresolvedQuestions({ questions, onJumpToQuote }: UnresolvedQues
         >
           <div className="flex items-start gap-2.5">
             <HelpCircle className="w-4 h-4 text-amber-500 shrink-0 mt-0.5" />
-            <div className="flex-1">
-              <h4 className="text-sm font-semibold text-slate-900 mb-1">
+            <div className="flex-1 min-w-0">
+              <h4 className="text-sm font-semibold text-slate-900 mb-1 break-words">
                 {q.question_text}
               </h4>
               {q.asked_by && (
@@ -45,16 +45,17 @@ export function UnresolvedQuestions({ questions, onJumpToQuote }: UnresolvedQues
               )}
 
               {q.supporting_quote && (
-                <div className="flex items-center justify-between gap-3 bg-slate-50 border border-slate-200 rounded px-2.5 py-1.5 text-xs">
-                  <span className="italic text-slate-600 truncate pr-2">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 bg-slate-50 border border-slate-200 rounded p-2.5 text-xs">
+                  <span className="italic text-slate-600 break-words min-w-0 flex-1">
                     &ldquo;{q.supporting_quote}&rdquo;
                   </span>
                   {q.start_ms !== null && q.start_ms !== undefined && (
                     <button
                       onClick={() => onJumpToQuote(q.start_ms!)}
-                      className="shrink-0 flex items-center gap-1 px-2 py-0.5 rounded bg-slate-900 text-white hover:bg-slate-800 transition font-mono font-medium text-xs"
+                      className="self-start sm:self-center shrink-0 flex items-center gap-1 px-2 py-1 rounded bg-slate-900 text-white hover:bg-slate-800 transition font-mono font-medium text-xs whitespace-nowrap"
+                      title="Jump to audio position"
                     >
-                      <PlayCircle className="w-3 h-3" />
+                      <PlayCircle className="w-3.5 h-3.5" />
                       <span>{formatTimestamp(q.start_ms)}</span>
                     </button>
                   )}

@@ -1,6 +1,7 @@
 import json
-import uuid
+import logging
 from pathlib import Path
+import uuid
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel
@@ -18,12 +19,24 @@ from app.db.models import (
     UnresolvedQuestion,
 )
 from app.db.session import get_db
+from app.storage import storage_service
 
+logger = logging.getLogger("conversations-routes")
 router = APIRouter(prefix="/api/v1", tags=["Conversations & Commitments"])
 
-# Resolve samples directory path
-BASE_DIR = Path(__file__).resolve().parent.parent.parent.parent.parent
-SAMPLES_DIR = BASE_DIR / "samples"
+
+def get_samples_dir() -> Path:
+    if Path("/samples").exists():
+        return Path("/samples")
+    p = Path(__file__).resolve()
+    for parent in p.parents:
+        cand = parent / "samples"
+        if cand.exists():
+            return cand
+    return Path.cwd() / "samples"
+
+
+SAMPLES_DIR = get_samples_dir()
 
 
 # ==============================================================================
@@ -255,15 +268,51 @@ async def load_sample(
     immediately inspect the UI and audio jumping without running slow API calls.
     """
     mapping = {
-        "sample_01": ("ground_truth_01.json", "Conversation 1: Core Benchmark"),
-        "sample_02": ("ground_truth_02.json", "Conversation 2: Agreement Variant"),
-        "sample_03": ("ground_truth_03.json", "Conversation 3: Inconclusive Dialogue"),
+        "sample_01": (
+            "ground_truth_01.json",
+            "Conversation 1: Core Benchmark",
+            "conversation_01_core.wav",
+            102.8,
+            {
+                "Yes, I will take that on. I'll build the waveform and the scrub bar.": (44000, 58000),
+                "Nobody is assigned to that yet, so let's leave it unassigned for now and pick it up tomorrow.": (93000, 110000),
+                "So scratch the investor deck—I won't do the slides anymore.": (125000, 140000),
+                "That's overkill for our current volume. Let's stick with Python FastAPI for now. We won't do the Rust rewrite.": (31000, 43000),
+            },
+            {
+                "Quick question: do we already have the production API keys for the Whisper transcription provider?": (111000, 124000),
+            },
+        ),
+        "sample_02": (
+            "ground_truth_02.json",
+            "Conversation 2: Agreement Variant",
+            "conversation_02_variant.wav",
+            107.8,
+            {
+                "Awesome! Yes, I will take on the Rust rewrite.": (38000, 41000),
+                "Yes, I will take that on too. I'll build the waveform and the scrub bar.": (41000, 43000),
+                "Nobody is assigned to that yet, so let's leave it unassigned for now and pick it up tomorrow.": (48000, 50000),
+                "So scratch the investor deck—I won't do the slides anymore.": (51000, 53000),
+            },
+            {
+                "Quick question: do we already have the production API keys for the Whisper transcription provider?": (50000, 52000),
+            },
+        ),
+        "sample_03": (
+            "ground_truth_03.json",
+            "Conversation 3: Inconclusive Dialogue",
+            "conversation_03_ambiguous.wav",
+            47.9,
+            {},
+            {},
+        ),
     }
     if sample_id not in mapping:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Unknown sample ID.")
 
-    filename, title = mapping[sample_id]
+    filename, title, audio_filename, duration, quote_ts, question_ts = mapping[sample_id]
     filepath = SAMPLES_DIR / "ground_truth" / filename
+    audio_path = SAMPLES_DIR / "audio" / audio_filename
 
     if not filepath.exists():
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Ground truth file {filename} not found.")
@@ -271,14 +320,28 @@ async def load_sample(
     with open(filepath, encoding="utf-8") as f:
         data = json.load(f)
 
+    # Pre-seed MinIO with sample audio if available
+    s3_key = f"samples/{sample_id}.wav"
+    if audio_path.exists():
+        try:
+            with open(audio_path, "rb") as f:
+                audio_bytes = f.read()
+            await storage_service.upload_audio(
+                file_bytes=audio_bytes,
+                s3_key=s3_key,
+                content_type="audio/wav",
+            )
+        except Exception as e:
+            logger.warning(f"Could not pre-seed MinIO for sample {sample_id}: {e}")
+
     # Create synthetic conversation
     conv_id = uuid.uuid4()
     conv = Conversation(
         id=conv_id,
         title=title,
-        audio_s3_key=f"samples/{sample_id}.wav",
+        audio_s3_key=s3_key,
         audio_sha256=f"synthetic_{sample_id}_sha256",
-        duration_seconds=146.0,
+        duration_seconds=duration,
         status=ConversationStatus.COMPLETED,
         is_inconclusive=data.get("is_inconclusive", False),
         inconclusive_reason=data.get("inconclusive_reason"),
@@ -304,26 +367,30 @@ async def load_sample(
         )
         db.add(c)
         if "supporting_quote" in item:
+            quote = item["supporting_quote"]
+            start_ms, end_ms = quote_ts.get(quote, (45000, 58000))
             db.add(
                 EvidenceCitation(
                     commitment_id=c.id,
-                    quote_text=item["supporting_quote"],
-                    start_ms=45000,
-                    end_ms=58000,
+                    quote_text=quote,
+                    start_ms=start_ms,
+                    end_ms=end_ms,
                     speaker_name=item.get("owner_name"),
                 )
             )
 
     # Add unresolved questions
     for q in data.get("unresolved_questions", []):
+        quote = q.get("supporting_quote")
+        start_ms, end_ms = question_ts.get(quote, (111000, 124000))
         db.add(
             UnresolvedQuestion(
                 conversation_id=conv_id,
                 question_text=q["question_text"],
                 asked_by=q.get("asked_by"),
-                supporting_quote=q.get("supporting_quote"),
-                start_ms=111000,
-                end_ms=124000,
+                supporting_quote=quote,
+                start_ms=start_ms,
+                end_ms=end_ms,
             )
         )
 

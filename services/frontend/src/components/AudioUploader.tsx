@@ -5,10 +5,11 @@ import { Upload, Loader2, AlertCircle } from "lucide-react";
 import { uploadAudio } from "../lib/api";
 
 interface AudioUploaderProps {
-  onUploadSuccess: (conversationId: string) => void;
+  onUploadStart?: (fileName: string) => void;
+  onUploadSuccess: (conversationId: string, title?: string) => void;
 }
 
-export function AudioUploader({ onUploadSuccess }: AudioUploaderProps) {
+export function AudioUploader({ onUploadStart, onUploadSuccess }: AudioUploaderProps) {
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const [isUploading, setIsUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -19,10 +20,11 @@ export function AudioUploader({ onUploadSuccess }: AudioUploaderProps) {
 
     setError(null);
     setIsUploading(true);
+    onUploadStart?.(file.name);
 
     try {
       const result = await uploadAudio(file);
-      onUploadSuccess(result.conversation_id);
+      onUploadSuccess(result.conversation_id, result.title);
     } catch (err: any) {
       setError(err.message || "Failed to upload audio.");
     } finally {

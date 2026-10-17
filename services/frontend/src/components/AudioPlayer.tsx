@@ -1,36 +1,123 @@
 "use client";
 
 import React, { useEffect, useRef, useState } from "react";
-import { Play, Pause, RotateCcw, Volume2 } from "lucide-react";
+import { Play, Pause, RotateCcw, Volume2, AlertCircle } from "lucide-react";
 
 interface AudioPlayerProps {
   streamUrl: string | null;
   title: string;
+  initialDuration?: number | null;
+  jumpTarget?: { timeMs: number; nonce: number } | null;
   activeTimeMs?: number | null;
 }
 
-export function AudioPlayer({ streamUrl, title, activeTimeMs }: AudioPlayerProps) {
+export function AudioPlayer({
+  streamUrl,
+  title,
+  initialDuration,
+  jumpTarget,
+  activeTimeMs,
+}: AudioPlayerProps) {
   const audioRef = useRef<HTMLAudioElement | null>(null);
+  const pendingSeekRef = useRef<number | null>(null);
   const [isPlaying, setIsPlaying] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
-  const [duration, setDuration] = useState(0);
+  const [duration, setDuration] = useState(initialDuration || 0);
+  const [playbackError, setPlaybackError] = useState<string | null>(null);
 
-  // Jump to specific timestamp when activeTimeMs changes
+  // Sync duration whenever initialDuration changes
   useEffect(() => {
-    if (audioRef.current && activeTimeMs !== undefined && activeTimeMs !== null) {
-      audioRef.current.currentTime = activeTimeMs / 1000;
-      audioRef.current.play().catch(() => {});
-      setIsPlaying(true);
+    if (initialDuration && initialDuration > 0) {
+      setDuration((prev) => (prev > 0 ? prev : initialDuration));
     }
-  }, [activeTimeMs]);
+  }, [initialDuration]);
 
-  const togglePlay = () => {
-    if (!audioRef.current) return;
+  // Reload audio and reset times when streamUrl changes
+  useEffect(() => {
+    setPlaybackError(null);
+    setIsPlaying(false);
+    setCurrentTime(0);
+    if (initialDuration && initialDuration > 0) {
+      setDuration(initialDuration);
+    } else {
+      setDuration(0);
+    }
+    if (audioRef.current) {
+      audioRef.current.load();
+    }
+  }, [streamUrl, initialDuration]);
+
+  const triggerSeekAndPlay = (targetMs: number) => {
+    setPlaybackError(null);
+    const targetSeconds = Math.max(0, targetMs / 1000);
+    const audio = audioRef.current;
+    if (!audio) return;
+
+    if (audio.readyState >= 1) {
+      audio.currentTime = targetSeconds;
+      setCurrentTime(targetSeconds);
+      audio.play().catch((err) => {
+        console.warn("Audio play blocked by browser:", err);
+      });
+      setIsPlaying(true);
+    } else {
+      pendingSeekRef.current = targetSeconds;
+      setCurrentTime(targetSeconds);
+      audio.load();
+    }
+  };
+
+  // Jump to specific timestamp when jumpTarget changes
+  useEffect(() => {
+    if (jumpTarget && jumpTarget.timeMs !== null && jumpTarget.timeMs !== undefined) {
+      triggerSeekAndPlay(jumpTarget.timeMs);
+    }
+  }, [jumpTarget]);
+
+  // Fallback for direct activeTimeMs updates
+  useEffect(() => {
+    if (activeTimeMs !== undefined && activeTimeMs !== null && !jumpTarget) {
+      triggerSeekAndPlay(activeTimeMs);
+    }
+  }, [activeTimeMs, jumpTarget]);
+
+  const togglePlay = async () => {
+    const audio = audioRef.current;
+    if (!audio) return;
+    setPlaybackError(null);
+
     if (isPlaying) {
-      audioRef.current.pause();
+      audio.pause();
       setIsPlaying(false);
     } else {
-      audioRef.current.play().catch(() => {});
+      try {
+        await audio.play();
+        setIsPlaying(true);
+      } catch (err: any) {
+        console.error("Audio playback error:", err);
+        setPlaybackError("Playback prevented by browser. Click again to play.");
+        setIsPlaying(false);
+      }
+    }
+  };
+
+  const syncDuration = () => {
+    const audio = audioRef.current;
+    if (!audio) return;
+
+    const d = audio.duration;
+    if (d && !isNaN(d) && isFinite(d) && d > 0) {
+      setDuration(d);
+    } else if (initialDuration && initialDuration > 0) {
+      setDuration(initialDuration);
+    }
+
+    if (pendingSeekRef.current !== null) {
+      const seekSec = pendingSeekRef.current;
+      pendingSeekRef.current = null;
+      audio.currentTime = seekSec;
+      setCurrentTime(seekSec);
+      audio.play().catch(() => {});
       setIsPlaying(true);
     }
   };
@@ -38,12 +125,6 @@ export function AudioPlayer({ streamUrl, title, activeTimeMs }: AudioPlayerProps
   const handleTimeUpdate = () => {
     if (audioRef.current) {
       setCurrentTime(audioRef.current.currentTime);
-    }
-  };
-
-  const handleLoadedMetadata = () => {
-    if (audioRef.current) {
-      setDuration(audioRef.current.duration);
     }
   };
 
@@ -56,7 +137,7 @@ export function AudioPlayer({ streamUrl, title, activeTimeMs }: AudioPlayerProps
   };
 
   const formatTime = (seconds: number) => {
-    if (isNaN(seconds)) return "00:00";
+    if (isNaN(seconds) || !isFinite(seconds)) return "00:00";
     const mins = Math.floor(seconds / 60);
     const secs = Math.floor(seconds % 60);
     return `${mins.toString().padStart(2, "0")}:${secs.toString().padStart(2, "0")}`;
@@ -75,9 +156,21 @@ export function AudioPlayer({ streamUrl, title, activeTimeMs }: AudioPlayerProps
       <audio
         ref={audioRef}
         src={streamUrl}
+        preload="metadata"
         onTimeUpdate={handleTimeUpdate}
-        onLoadedMetadata={handleLoadedMetadata}
-        onEnded={() => setIsPlaying(false)}
+        onLoadedMetadata={syncDuration}
+        onDurationChange={syncDuration}
+        onCanPlay={syncDuration}
+        onPlay={() => setIsPlaying(true)}
+        onPause={() => setIsPlaying(false)}
+        onEnded={() => {
+          setIsPlaying(false);
+          setCurrentTime(0);
+        }}
+        onError={() => {
+          setIsPlaying(false);
+          setPlaybackError("Audio stream loading error.");
+        }}
       />
 
       <div className="flex items-center justify-between mb-2">
@@ -105,6 +198,7 @@ export function AudioPlayer({ streamUrl, title, activeTimeMs }: AudioPlayerProps
           onClick={() => {
             if (audioRef.current) {
               audioRef.current.currentTime = 0;
+              setCurrentTime(0);
             }
           }}
           className="p-2 rounded-full text-slate-500 hover:text-slate-800 transition"
@@ -125,6 +219,13 @@ export function AudioPlayer({ streamUrl, title, activeTimeMs }: AudioPlayerProps
 
         <Volume2 className="w-4 h-4 text-slate-400" />
       </div>
+
+      {playbackError && (
+        <div className="flex items-center gap-1.5 text-xs text-rose-600 bg-rose-50 border border-rose-200 rounded px-2.5 py-1.5 mt-2">
+          <AlertCircle className="w-3.5 h-3.5 shrink-0" />
+          <span>{playbackError}</span>
+        </div>
+      )}
     </div>
   );
 }

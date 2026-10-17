@@ -54,7 +54,8 @@ async def process_conversation(conversation_id: uuid.UUID) -> None:
             await db.commit()
 
             audio_bytes = await storage_client.download_audio_bytes(conv.audio_s3_key)
-            segments, duration = await stt_service.transcribe(audio_bytes, conv.title)
+            audio_filename = conv.audio_s3_key.split("/")[-1]
+            segments, duration = await stt_service.transcribe(audio_bytes, audio_filename)
 
             conv.duration_seconds = duration
 

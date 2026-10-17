@@ -31,7 +31,7 @@ class Settings(BaseSettings):
         return bool(self.GROQ_API_KEY or self.OPENAI_API_KEY or self.GEMINI_API_KEY)
 
     model_config = SettingsConfigDict(
-        env_file=".env",
+        env_file=(".env", "../../.env"),
         env_file_encoding="utf-8",
         extra="ignore",
     )

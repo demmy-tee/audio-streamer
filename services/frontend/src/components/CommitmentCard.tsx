@@ -101,17 +101,17 @@ export function CommitmentCard({ commitment, onJumpToQuote }: CommitmentCardProp
           {commitment.citations.map((cit, idx) => (
             <div
               key={idx}
-              className="flex items-center justify-between gap-3 bg-slate-50 border border-slate-200 rounded px-3 py-2 text-xs"
+              className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 bg-slate-50 border border-slate-200 rounded p-2.5 text-xs"
             >
-              <div className="italic text-slate-700 truncate pr-2">
+              <div className="italic text-slate-700 break-words min-w-0 flex-1">
                 &ldquo;{cit.quote_text}&rdquo;
               </div>
               <button
                 onClick={() => onJumpToQuote(cit.start_ms)}
-                className="shrink-0 flex items-center gap-1 px-2 py-1 rounded bg-slate-900 text-white hover:bg-slate-800 transition font-mono font-medium text-xs"
+                className="self-start sm:self-center shrink-0 flex items-center gap-1 px-2 py-1 rounded bg-slate-900 text-white hover:bg-slate-800 transition font-mono font-medium text-xs whitespace-nowrap"
                 title="Jump to audio position"
               >
-                <PlayCircle className="w-3 h-3" />
+                <PlayCircle className="w-3.5 h-3.5" />
                 <span>
                   {formatTimestamp(cit.start_ms)} - {formatTimestamp(cit.end_ms)}
                 </span>

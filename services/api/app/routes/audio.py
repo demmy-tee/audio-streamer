@@ -1,6 +1,8 @@
+import logging
+from pathlib import Path
 import uuid
 
-from fastapi import APIRouter, Depends, File, Header, HTTPException, UploadFile, status
+from fastapi import APIRouter, Depends, File, Header, HTTPException, Request, Response, UploadFile, status
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 from sqlalchemy import select
@@ -10,6 +12,7 @@ from app.db.models import Conversation, ConversationStatus
 from app.db.session import get_db
 from app.storage import storage_service
 
+logger = logging.getLogger("audio-routes")
 router = APIRouter(prefix="/api/v1/audio", tags=["Audio Streaming & Upload"])
 
 ALLOWED_MIME_TYPES = {
@@ -101,19 +104,21 @@ async def upload_audio(
     )
 
 
-@router.get(
+@router.api_route(
     "/{conversation_id}/stream",
-    summary="Stream audio with HTTP 206 Partial Content Range support",
+    methods=["GET", "HEAD"],
+    summary="Stream audio with HTTP 206 Partial Content Range support and HEAD probing",
 )
 async def stream_audio(
+    request: Request,
     conversation_id: str,
     range_header: str | None = Header(None, alias="Range"),
     db: AsyncSession = Depends(get_db),
 ):
     """
     Streams audio bytes for a conversation.
-    Supports HTTP Range requests (HTTP 206) so the browser audio player
-    can seek and jump to timestamped quotes instantly.
+    Supports HTTP Range requests (HTTP 206) and HEAD requests so browser audio players
+    can probe audio length and seek/jump to timestamped quotes instantly.
     """
     try:
         conv_uuid = uuid.UUID(conversation_id)
@@ -127,30 +132,115 @@ async def stream_audio(
     if not conversation:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Conversation not found.")
 
+    # Determine dynamic content type based on file extension
+    ext = conversation.audio_s3_key.lower().rsplit(".", 1)[-1] if "." in conversation.audio_s3_key else "wav"
+    content_type_map = {
+        "wav": "audio/wav",
+        "mp3": "audio/mpeg",
+        "m4a": "audio/mp4",
+        "mp4": "audio/mp4",
+        "ogg": "audio/ogg",
+        "opus": "audio/opus",
+        "flac": "audio/flac",
+        "webm": "audio/webm",
+    }
+    content_type = content_type_map.get(ext, "audio/wav")
+
+    stream_gen = None
+    start_byte = 0
+    end_byte = 0
+    total_size = 0
+
     try:
         stream_gen, start_byte, end_byte, total_size = await storage_service.get_audio_stream(
             s3_key=conversation.audio_s3_key,
             byte_range=range_header,
         )
-    except Exception as e:
+    except Exception as s3_err:
+        logger.warning(f"S3 stream failed for {conversation.audio_s3_key}: {s3_err}. Checking local fallback...")
+        local_path = None
+        candidates = [
+            Path("/samples/audio"),
+            Path(__file__).resolve().parent.parent.parent.parent.parent / "samples" / "audio",
+            Path.cwd() / "samples" / "audio",
+        ]
+        target_name = conversation.audio_s3_key.split("/")[-1]
+        sample_map = {
+            "sample_01.wav": "conversation_01_core.wav",
+            "sample_02.wav": "conversation_02_variant.wav",
+            "sample_03.wav": "conversation_03_ambiguous.wav",
+        }
+        fallback_name = sample_map.get(target_name, target_name)
+
+        for c_dir in candidates:
+            cand = c_dir / fallback_name
+            if cand.exists():
+                local_path = cand
+                break
+
+        if not local_path or not local_path.exists():
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail=f"Could not retrieve audio from storage: {s3_err}",
+            )
+
+        total_size = local_path.stat().st_size
+        start_byte = 0
+        end_byte = total_size - 1
+
+        if range_header and range_header.startswith("bytes="):
+            parts = range_header.replace("bytes=", "").split("-")
+            if parts[0]:
+                start_byte = int(parts[0])
+            if len(parts) > 1 and parts[1]:
+                end_byte = int(parts[1])
+
+        start_byte = max(0, start_byte)
+        end_byte = min(total_size - 1, end_byte)
+
+        async def local_stream_gen():
+            with open(local_path, "rb") as f:
+                f.seek(start_byte)
+                bytes_left = end_byte - start_byte + 1
+                while bytes_left > 0:
+                    chunk = f.read(min(64 * 1024, bytes_left))
+                    if not chunk:
+                        break
+                    bytes_left -= len(chunk)
+                    yield chunk
+
+        stream_gen = local_stream_gen
+
+    if range_header and start_byte >= total_size:
         raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Could not retrieve audio from storage: {e}",
+            status_code=status.HTTP_416_REQUESTED_RANGE_NOT_SATISFIABLE,
+            headers={"Content-Range": f"bytes */{total_size}"},
         )
 
     content_length = end_byte - start_byte + 1
     headers = {
-        "Content-Range": f"bytes {start_byte}-{end_byte}/{total_size}",
         "Accept-Ranges": "bytes",
         "Content-Length": str(content_length),
-        "Content-Type": "audio/wav",
+        "Content-Type": content_type,
     }
 
-    status_code = status.HTTP_206_PARTIAL_CONTENT if range_header else status.HTTP_200_OK
+    # RFC 7233: Content-Range MUST only be included on 206 Partial Content
+    status_code = status.HTTP_200_OK
+    if range_header:
+        status_code = status.HTTP_206_PARTIAL_CONTENT
+        headers["Content-Range"] = f"bytes {start_byte}-{end_byte}/{total_size}"
+
+    # Respond to HEAD requests with metadata only (no body)
+    if request.method == "HEAD":
+        return Response(
+            status_code=status_code,
+            headers=headers,
+            media_type=content_type,
+        )
 
     return StreamingResponse(
         stream_gen(),
         status_code=status_code,
         headers=headers,
-        media_type="audio/wav",
+        media_type=content_type,
     )

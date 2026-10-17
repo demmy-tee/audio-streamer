@@ -122,21 +122,37 @@ class CommitmentExtractor:
         client = AsyncGroq(api_key=self.settings.GROQ_API_KEY)
         schema_json = json.dumps(ConversationAnalysisResult.model_json_schema())
 
-        response = await client.chat.completions.create(
-            model="llama-3.3-70b-versatile",
-            messages=[
-                {
-                    "role": "system",
-                    "content": f"{SYSTEM_PROMPT}\nYou must respond strictly with valid JSON conforming to this JSON schema:\n{schema_json}",
-                },
-                {"role": "user", "content": user_prompt},
-            ],
-            response_format={"type": "json_object"},
-            temperature=0.0,
-        )
+        # Models available on Groq that support JSON schema formatting
+        candidate_models = [
+            "openai/gpt-oss-120b",
+            "openai/gpt-oss-20b",
+            "qwen/qwen3.8-27b",
+        ]
 
-        content = response.choices[0].message.content
-        return ConversationAnalysisResult.model_validate_json(content)
+        last_error = None
+        for model_name in candidate_models:
+            try:
+                logger.info(f"Extracting commitments via Groq ({model_name})...")
+                response = await client.chat.completions.create(
+                    model=model_name,
+                    messages=[
+                        {
+                            "role": "system",
+                            "content": f"{SYSTEM_PROMPT}\nYou must respond strictly with valid JSON conforming to this JSON schema:\n{schema_json}",
+                        },
+                        {"role": "user", "content": user_prompt},
+                    ],
+                    response_format={"type": "json_object"},
+                    temperature=0.0,
+                )
+
+                content = response.choices[0].message.content
+                return ConversationAnalysisResult.model_validate_json(content)
+            except Exception as e:
+                logger.warning(f"Groq extraction failed with {model_name}: {e}. Retrying next model...")
+                last_error = e
+
+        raise last_error or RuntimeError("Groq extraction failed across all candidate models.")
 
 
 extractor = CommitmentExtractor()
