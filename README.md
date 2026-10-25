@@ -1,7 +1,7 @@
-# Audio Commitments Streamer
-> **Codebridge Technology, Inc. — Product Builder Test Task Submission**  
-> **Candidate:** Daniel | **Role:** Product Builder  
-> An enterprise prototype that converts recorded project discussions into deterministic, legal-grade final commitments with zero hallucination, millisecond-accurate audio scrubbing via HTTP 206 range streaming, and automated linguistic trap isolation.
+# CommitStream: Audio to Final Commitments
+> **Codebridge Technology, Inc. — AI-First Product Builder Test Task Submission**  
+> **Candidate:** Daniel | **Role:** AI-First Product Builder  
+> A focused prototype that converts recorded team discussions into verified final commitments with confirmed owners, negotiated deadlines, and click-to-play audio citations.
 
 [![CI Quality Gate](https://github.com/demmy-tee/audio-streamer/actions/workflows/ci.yml/badge.svg)](https://github.com/demmy-tee/audio-streamer/actions/workflows/ci.yml)
 [![Docker Compose Ready](https://img.shields.io/badge/Docker_Compose-6_Services-2496ED?logo=docker&logoColor=white)](docker-compose.yml)
