@@ -29,7 +29,14 @@ class Settings(BaseSettings):
     OPENAI_API_KEY: str = ""
     GEMINI_API_KEY: str = ""
 
+    # Local storage fallback directory
+    LOCAL_STORAGE_DIR: str = "/tmp/audio_uploads"
+
     # Convenience properties
+    @property
+    def has_ai_credentials(self) -> bool:
+        return bool(self.GROQ_API_KEY.strip() or self.OPENAI_API_KEY.strip() or self.GEMINI_API_KEY.strip())
+
     @property
     def is_development(self) -> bool:
         return self.ENVIRONMENT.lower() in ("development", "dev", "local")

@@ -4,6 +4,7 @@ from pathlib import Path
 
 from fastapi import (
     APIRouter,
+    BackgroundTasks,
     Depends,
     File,
     Header,
@@ -20,6 +21,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.models import Conversation, ConversationStatus
 from app.db.session import get_db
+from app.pipeline.processor import process_conversation_task
 from app.storage import storage_service
 
 logger = logging.getLogger("audio-routes")
@@ -53,15 +55,17 @@ class ConversationUploadResponse(BaseModel):
     summary="Upload an audio file for transcription and commitment extraction",
 )
 async def upload_audio(
+    background_tasks: BackgroundTasks,
     file: UploadFile = File(...),
     db: AsyncSession = Depends(get_db),
 ):
     """
     Uploads an audio file (.wav, .mp3, .m4a):
     1. Validates content type and size limits.
-    2. Uploads raw audio bytes to MinIO S3.
+    2. Uploads raw audio bytes to S3/local storage.
     3. Computes SHA-256 fingerprint for deduplication.
     4. Creates initial Conversation record in PostgreSQL.
+    5. Dispatches background transcription and extraction task.
     """
     if file.content_type and file.content_type not in ALLOWED_MIME_TYPES:
         raise HTTPException(
@@ -104,13 +108,16 @@ async def upload_audio(
     await db.commit()
     await db.refresh(conversation)
 
+    # Trigger background transcription and commitments extraction
+    background_tasks.add_task(process_conversation_task, str(conversation.id))
+
     return ConversationUploadResponse(
         conversation_id=str(conversation.id),
         title=conversation.title,
         status=conversation.status.value,
         audio_s3_key=conversation.audio_s3_key,
         sha256=conversation.audio_sha256,
-        message="Audio uploaded successfully. Ready for processing.",
+        message="Audio uploaded successfully. Processing initiated.",
     )
 
 

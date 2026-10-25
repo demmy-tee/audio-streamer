@@ -1,10 +1,34 @@
 import { ConversationDetail, SampleSummary } from "../types";
 
-let rawUrl = process.env.NEXT_PUBLIC_API_URL?.trim().replace(/\/$/, "");
-if (rawUrl && !rawUrl.startsWith("http://") && !rawUrl.startsWith("https://")) {
-  rawUrl = `https://${rawUrl}`;
+function getApiBaseUrl(): string {
+  // In the browser, check if NEXT_PUBLIC_API_URL is an explicit public domain or localhost
+  if (typeof window !== "undefined") {
+    const raw = process.env.NEXT_PUBLIC_API_URL?.trim().replace(/\/$/, "");
+    if (raw && (raw.includes(".") || raw.includes("localhost"))) {
+      if (!raw.startsWith("http://") && !raw.startsWith("https://")) {
+        return `https://${raw}`;
+      }
+      return raw;
+    }
+    // Default to relative URL so browser requests are proxied via Next.js rewrites to backend
+    return "";
+  }
+
+  // Server-side (SSR)
+  const serverUrl =
+    process.env.INTERNAL_API_URL?.trim() ||
+    process.env.BACKEND_API_URL?.trim() ||
+    process.env.NEXT_PUBLIC_API_URL?.trim() ||
+    "http://127.0.0.1:8000";
+
+  let formatted = serverUrl.replace(/\/$/, "");
+  if (!formatted.startsWith("http://") && !formatted.startsWith("https://")) {
+    formatted = `http://${formatted}`;
+  }
+  return formatted;
 }
-const API_BASE_URL = rawUrl || "http://localhost:8000";
+
+const API_BASE_URL = getApiBaseUrl();
 
 export function getAudioStreamUrl(conversationId: string): string {
   return `${API_BASE_URL}/api/v1/audio/${conversationId}/stream`;
