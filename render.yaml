@@ -111,6 +111,7 @@ services:
     plan: starter
     region: oregon
     maxmemoryPolicy: allkeys-lru
+    ipAllowList: []
 
 # 5. Managed PostgreSQL Database
 databases:
