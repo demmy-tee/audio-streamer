@@ -26,8 +26,15 @@ router = APIRouter(prefix="/api/v1", tags=["Conversations & Commitments"])
 
 
 def get_samples_dir() -> Path:
-    if Path("/samples").exists():
-        return Path("/samples")
+    candidates = [
+        Path("/app/samples"),
+        Path("/samples"),
+        Path(__file__).resolve().parent.parent.parent / "samples",
+        Path.cwd() / "samples",
+    ]
+    for cand in candidates:
+        if cand.exists():
+            return cand
     p = Path(__file__).resolve()
     for parent in p.parents:
         cand = parent / "samples"

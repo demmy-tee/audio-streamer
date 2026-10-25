@@ -1,0 +1,19 @@
+[00:00 - 00:08]
+Daniel: "Hey Elena, Daniel here. We need to figure out our Q3 roadmap."
+
+[00:09 - 00:15]
+Elena: "Hi Daniel, Elena here. Honestly, leadership hasn't given us budget clarity yet."
+
+[00:16 - 00:30]
+Daniel: "Right. Maybe we could look into adding WebSockets for live collaborative editing? Or maybe mobile apps?"
+
+[00:31 - 00:46]
+Elena: "I don't know, WebSockets might be too complex, and mobile apps are expensive. Let's definitely not commit to either of those today."
+
+[00:47 - 01:05]
+Daniel: "What about redesigning the onboarding flow?"
+Elena: "Let's put that on ice until we see next month's retention metrics. We really shouldn't make any decisions right now."
+
+[01:06 - 01:20]
+Daniel: "Fair enough. So we're just waiting on management's budget announcement before agreeing on any action items?"
+Elena: "Exactly. No tasks or deadlines today. Let's reconvene next week."

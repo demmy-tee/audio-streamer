@@ -1,0 +1,54 @@
+{
+  "benchmark_id": "SYNTHETIC_CONV_02_VARIANT",
+  "description": "Agreement variant where the Rust rewrite proposal is ACCEPTED by Elena and taken by Daniel.",
+  "speakers_identified": ["Daniel", "Elena"],
+  "commitments": [
+    {
+      "task_description": "Rewrite the entire audio streaming pipeline in Rust",
+      "owner_name": "Daniel",
+      "is_owner_assigned": true,
+      "deadline_raw": null,
+      "missing_date_context": false,
+      "status": "ACTIVE",
+      "rationale": "Elena enthusiastically agreed to the Rust rewrite and Daniel explicitly agreed to take it on.",
+      "supporting_quote": "Let's do the Rust rewrite! Can you take that on? Awesome! Yes, I will take on the Rust rewrite."
+    },
+    {
+      "task_description": "Build the interactive waveform audio player with timestamp jumping",
+      "owner_name": "Daniel",
+      "is_owner_assigned": true,
+      "deadline_raw": "Wednesday at 3 PM",
+      "missing_date_context": true,
+      "status": "ACTIVE",
+      "rationale": "Daniel agreed to take on the waveform player with deadline corrected to Wednesday at 3 PM.",
+      "supporting_quote": "Yes, I will take that on too. I'll build the waveform and the scrub bar."
+    },
+    {
+      "task_description": "Configure MinIO CORS policy and range request headers for audio scrubbing",
+      "owner_name": null,
+      "is_owner_assigned": false,
+      "deadline_raw": null,
+      "missing_date_context": false,
+      "status": "ACTIVE",
+      "rationale": "Both agreed the task is critical, but explicitly stated nobody is assigned yet.",
+      "supporting_quote": "Nobody is assigned to that yet, so let's leave it unassigned for now and pick it up tomorrow."
+    },
+    {
+      "task_description": "Prepare the investor update slides",
+      "owner_name": "Elena",
+      "is_owner_assigned": true,
+      "deadline_raw": "tonight",
+      "missing_date_context": true,
+      "status": "CANCELLED",
+      "rationale": "Elena initially agreed to make the slides tonight, but explicitly cancelled them at 01:35.",
+      "supporting_quote": "So scratch the investor deck—I won't do the slides anymore."
+    }
+  ],
+  "unresolved_questions": [
+    {
+      "question_text": "Do we already have the production API keys for the Whisper transcription provider?",
+      "asked_by": "Elena",
+      "supporting_quote": "Quick question: do we already have the production API keys for the Whisper transcription provider?"
+    }
+  ]
+}

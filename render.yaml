@@ -11,11 +11,10 @@ services:
     envVars:
       - key: NODE_ENV
         value: production
+      - key: INTERNAL_API_URL
+        value: "http://audio-api:8000"
       - key: NEXT_PUBLIC_API_URL
-        fromService:
-          type: web
-          name: audio-api
-          property: host
+        value: ""
 
   # 2. FastAPI Web API & Streaming Service - 100% Free ($0.00)
   - type: web
@@ -38,6 +37,8 @@ services:
       - key: ALLOWED_ORIGINS
         value: "https://*.onrender.com,https://*.vercel.app,http://localhost:3000"
       - key: GROQ_API_KEY
+        sync: false
+      - key: OPENAI_API_KEY
         sync: false
 
 # 3. Managed PostgreSQL Database - 100% Free ($0.00)

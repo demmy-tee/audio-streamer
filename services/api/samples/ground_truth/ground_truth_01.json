@@ -1,0 +1,54 @@
+{
+  "benchmark_id": "SYNTHETIC_CONV_01",
+  "description": "Core benchmark containing all 5 linguistic traps: unaccepted proposal, corrected deadline, cancelled task, unassigned task, and unresolved question.",
+  "speakers_identified": ["Daniel", "Elena"],
+  "commitments": [
+    {
+      "task_description": "Build the interactive waveform audio player with timestamp jumping",
+      "owner_name": "Daniel",
+      "is_owner_assigned": true,
+      "deadline_raw": "Wednesday at 3 PM",
+      "missing_date_context": true,
+      "status": "ACTIVE",
+      "rationale": "Daniel agreed to take on the waveform player. The deadline was initially proposed as Tuesday 10 AM, but corrected and agreed as Wednesday at 3 PM.",
+      "supporting_quote": "Yes, I will take that on. I'll build the waveform and the scrub bar."
+    },
+    {
+      "task_description": "Configure MinIO CORS policy and range request headers for audio scrubbing",
+      "owner_name": null,
+      "is_owner_assigned": false,
+      "deadline_raw": null,
+      "missing_date_context": false,
+      "status": "ACTIVE",
+      "rationale": "Both agreed the task is critical, but explicitly stated nobody is assigned yet.",
+      "supporting_quote": "Nobody is assigned to that yet, so let's leave it unassigned for now and pick it up tomorrow."
+    },
+    {
+      "task_description": "Prepare the investor update slides",
+      "owner_name": "Elena",
+      "is_owner_assigned": true,
+      "deadline_raw": "tonight",
+      "missing_date_context": true,
+      "status": "CANCELLED",
+      "rationale": "Elena originally agreed to do the slides tonight, but at 01:30 explicitly cancelled it because the meeting was postponed.",
+      "supporting_quote": "So scratch the investor deck—I won't do the slides anymore."
+    },
+    {
+      "task_description": "Rewrite the entire audio streaming pipeline in Rust",
+      "owner_name": null,
+      "is_owner_assigned": false,
+      "deadline_raw": null,
+      "missing_date_context": false,
+      "status": "PROPOSAL_UNACCEPTED",
+      "rationale": "Daniel suggested rewriting the pipeline in Rust, but Elena rejected it as overkill and decided to stay with FastAPI.",
+      "supporting_quote": "That's overkill for our current volume. Let's stick with Python FastAPI for now. We won't do the Rust rewrite."
+    }
+  ],
+  "unresolved_questions": [
+    {
+      "question_text": "Do we already have the production API keys for the Whisper transcription provider?",
+      "asked_by": "Elena",
+      "supporting_quote": "Quick question: do we already have the production API keys for the Whisper transcription provider?"
+    }
+  ]
+}
