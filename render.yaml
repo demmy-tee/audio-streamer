@@ -1,12 +1,12 @@
 services:
-  # 0. Next.js 16 Web Dashboard (CommitStream Frontend)
+  # 1. Next.js 16 Web Dashboard (CommitStream Frontend) - 100% Free ($0.00)
   - type: web
     name: audio-frontend
     runtime: node
     rootDir: services/frontend
     buildCommand: npm install && npm run build
     startCommand: npm start
-    plan: starter
+    plan: free
     region: oregon
     envVars:
       - key: NODE_ENV
@@ -17,13 +17,13 @@ services:
           name: audio-api
           property: host
 
-  # 1. FastAPI Web API & Streaming Service
+  # 2. FastAPI Web API & Streaming Service - 100% Free ($0.00)
   - type: web
     name: audio-api
     runtime: docker
     dockerfilePath: ./services/api/Dockerfile
     dockerContext: ./services/api
-    plan: starter
+    plan: free
     region: oregon
     healthCheckPath: /healthz
     envVars:
@@ -35,89 +35,15 @@ services:
         fromDatabase:
           name: audio-postgres
           property: connectionString
-      - key: REDIS_URL
-        fromService:
-          type: redis
-          name: audio-redis
-          property: connectionString
-      - key: S3_ENDPOINT_URL
-        value: http://minio:9000
-      - key: S3_ACCESS_KEY
-        value: minioadmin
-      - key: S3_SECRET_KEY
-        sync: false
-      - key: S3_BUCKET_NAME
-        value: audio-streamer-records
       - key: ALLOWED_ORIGINS
         value: "https://*.onrender.com,https://*.vercel.app,http://localhost:3000"
       - key: GROQ_API_KEY
         sync: false
-      - key: OPENAI_API_KEY
-        sync: false
 
-  # 2. Async Background Worker (STT & Extraction Engine)
-  - type: worker
-    name: audio-worker
-    runtime: docker
-    dockerfilePath: ./services/worker/Dockerfile
-    dockerContext: ./services/worker
-    plan: starter
-    region: oregon
-    envVars:
-      - key: DATABASE_URL
-        fromDatabase:
-          name: audio-postgres
-          property: connectionString
-      - key: REDIS_URL
-        fromService:
-          type: redis
-          name: audio-redis
-          property: connectionString
-      - key: S3_ENDPOINT_URL
-        value: http://minio:9000
-      - key: S3_ACCESS_KEY
-        value: minioadmin
-      - key: S3_SECRET_KEY
-        sync: false
-      - key: S3_BUCKET_NAME
-        value: audio-streamer-records
-      - key: GROQ_API_KEY
-        sync: false
-      - key: OPENAI_API_KEY
-        sync: false
-
-  # 3. MinIO S3 Object Storage (Private Service with Persistent Disk)
-  - type: pserv
-    name: minio
-    runtime: image
-    image:
-      url: minio/minio:latest
-    plan: starter
-    region: oregon
-    disk:
-      name: minio-audio-data
-      mountPath: /data
-      sizeGB: 10
-    envVars:
-      - key: MINIO_ROOT_USER
-        value: minioadmin
-      - key: MINIO_ROOT_PASSWORD
-        sync: false
-    startCommand: server /data --console-address ":9001"
-
-  # 4. Managed Redis Key-Value Store
-  - type: redis
-    name: audio-redis
-    plan: starter
-    region: oregon
-    maxmemoryPolicy: allkeys-lru
-    ipAllowList: []
-
-# 5. Managed PostgreSQL Database
+# 3. Managed PostgreSQL Database - 100% Free ($0.00)
 databases:
   - name: audio-postgres
-    plan: starter
+    plan: free
     region: oregon
     databaseName: commitments_db
     user: commitments_user
-
