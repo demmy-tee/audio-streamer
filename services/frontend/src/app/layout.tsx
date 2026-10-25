@@ -3,8 +3,9 @@ import type { Metadata } from "next";
 import React from "react";
 
 export const metadata: Metadata = {
-  title: "Audio Commitments Streamer",
-  description: "Extract final agreed commitments, owners, deadlines, and timestamped audio citations.",
+  title: "CommitStream — Audio to Final Commitments",
+  description:
+    "Extract verified tasks, confirmed owners, and negotiated deadlines from project discussions with click-to-play audio proof.",
 };
 
 export default function RootLayout({
