@@ -1,4 +1,22 @@
 services:
+  # 0. Next.js 16 Web Dashboard (CommitStream Frontend)
+  - type: web
+    name: audio-frontend
+    runtime: node
+    rootDir: services/frontend
+    buildCommand: npm install && npm run build
+    startCommand: npm start
+    plan: starter
+    region: oregon
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: NEXT_PUBLIC_API_URL
+        fromService:
+          type: web
+          name: audio-api
+          property: host
+
   # 1. FastAPI Web API & Streaming Service
   - type: web
     name: audio-api
@@ -31,7 +49,7 @@ services:
       - key: S3_BUCKET_NAME
         value: audio-streamer-records
       - key: ALLOWED_ORIGINS
-        value: "https://*.vercel.app,http://localhost:3000"
+        value: "https://*.onrender.com,https://*.vercel.app,http://localhost:3000"
       - key: GROQ_API_KEY
         sync: false
       - key: OPENAI_API_KEY
