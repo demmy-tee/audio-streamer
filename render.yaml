@@ -105,7 +105,14 @@ services:
         sync: false
     startCommand: server /data --console-address ":9001"
 
-# 4. Managed PostgreSQL Database
+  # 4. Managed Redis Key-Value Store
+  - type: redis
+    name: audio-redis
+    plan: starter
+    region: oregon
+    maxmemoryPolicy: allkeys-lru
+
+# 5. Managed PostgreSQL Database
 databases:
   - name: audio-postgres
     plan: starter
@@ -113,9 +120,3 @@ databases:
     databaseName: commitments_db
     user: commitments_user
 
-# 5. Managed Redis Key-Value Store
-redis:
-  - name: audio-redis
-    plan: starter
-    region: oregon
-    maxmemoryPolicy: allkeys-lru
