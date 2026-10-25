@@ -1,7 +1,16 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
-import { CheckCircle2, AlertTriangle, FileQuestion, Ban, Loader2, AlertCircle } from "lucide-react";
+import {
+  CheckCircle2,
+  AlertTriangle,
+  FileQuestion,
+  Ban,
+  Loader2,
+  AlertCircle,
+  Clock,
+  PlayCircle,
+} from "lucide-react";
 import { AudioPlayer } from "../components/AudioPlayer";
 import { CommitmentCard } from "../components/CommitmentCard";
 import { UnresolvedQuestions } from "../components/UnresolvedQuestions";
@@ -52,13 +61,13 @@ export default function DashboardPage() {
   const handleSelectSample = async (sampleId: string) => {
     setSelectedSampleId(sampleId);
     setIsLoading(true);
-    setProcessingStatus("Loading benchmark...");
+    setProcessingStatus("Loading discussion...");
     try {
       const data = await loadSample(sampleId);
       setConversation(data);
     } catch (err) {
       console.error("Could not load sample:", err);
-      showToast("Failed to load benchmark sample");
+      showToast("Failed to load sample discussion");
     } finally {
       setIsLoading(false);
       setProcessingStatus(null);
@@ -147,23 +156,70 @@ export default function DashboardPage() {
 
   return (
     <div className="max-w-6xl mx-auto px-4 py-8">
-      {/* Header */}
-      <header className="mb-6 pb-4 border-b border-slate-200 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight text-slate-900">
-            Audio Commitments Streamer
-          </h1>
-          <p className="text-xs text-slate-500 mt-0.5">
-            Deterministic extraction of agreed tasks, deadlines, and timestamped audio citations.
-          </p>
+      {/* Top Navigation */}
+      <nav className="mb-6 pb-4 border-b border-slate-200 flex items-center justify-between">
+        <div className="flex items-center gap-2.5">
+          <div className="w-8 h-8 rounded bg-slate-900 text-white flex items-center justify-center font-bold text-xs tracking-wider">
+            CS
+          </div>
+          <div>
+            <div className="text-base font-bold text-slate-900 tracking-tight leading-none">
+              CommitStream
+            </div>
+            <div className="text-[11px] text-slate-500 font-medium">
+              Audio to Final Commitments
+            </div>
+          </div>
         </div>
         <div className="flex items-center gap-2">
-          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded text-xs font-medium bg-emerald-50 text-emerald-700 border border-emerald-200">
-            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-            System Online
+          <span className="text-xs text-slate-600 font-medium bg-slate-100 border border-slate-200 px-2.5 py-1 rounded">
+            Interactive Prototype &bull; No Signup Required
           </span>
         </div>
-      </header>
+      </nav>
+
+      {/* Hero: Sells what it is, who it's for, and why it matters */}
+      <section className="mb-6 bg-slate-50 border border-slate-200 rounded-lg p-6 shadow-sm">
+        <div className="max-w-3xl">
+          <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-slate-900 mb-2 leading-snug">
+            Turn recorded team syncs into verified final commitments.
+          </h1>
+          <p className="text-xs sm:text-sm text-slate-600 leading-relaxed mb-5">
+            Most AI meeting tools generate verbose summaries that blur agreed work with casual brainstorming.
+            CommitStream extracts final agreed tasks, confirmed owners, and negotiated deadlines — pairing each commitment with an audio citation you can verify in one click.
+          </p>
+
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-4 border-t border-slate-200 text-xs text-slate-700">
+            <div className="space-y-1">
+              <div className="font-semibold text-slate-900 flex items-center gap-1.5">
+                <CheckCircle2 className="w-3.5 h-3.5 text-slate-800" />
+                <span>Explicit Task Owners</span>
+              </div>
+              <p className="text-slate-500 leading-relaxed">
+                Separates confirmed assignees from unassigned tasks without guessing from proximity.
+              </p>
+            </div>
+            <div className="space-y-1">
+              <div className="font-semibold text-slate-900 flex items-center gap-1.5">
+                <Clock className="w-3.5 h-3.5 text-slate-800" />
+                <span>Negotiated Deadlines</span>
+              </div>
+              <p className="text-slate-500 leading-relaxed">
+                Captures the corrected final date agreed upon, ignoring discarded ideas.
+              </p>
+            </div>
+            <div className="space-y-1">
+              <div className="font-semibold text-slate-900 flex items-center gap-1.5">
+                <PlayCircle className="w-3.5 h-3.5 text-slate-800" />
+                <span>Audio Citations</span>
+              </div>
+              <p className="text-slate-500 leading-relaxed">
+                Click any quotation to scrub the audio player directly to that spoken sentence.
+              </p>
+            </div>
+          </div>
+        </div>
+      </section>
 
       {/* Input / Control Row */}
       <div className="mb-6">
@@ -197,7 +253,7 @@ export default function DashboardPage() {
                 onClick={() => samples.length > 0 && handleSelectSample(samples[0].sample_id)}
                 className="text-xs font-semibold px-3.5 py-2 rounded-md bg-slate-100 hover:bg-slate-200 text-slate-700 transition"
               >
-                ← View Preloaded Benchmarks
+                ← Try Example Discussions
               </button>
             </div>
           </div>

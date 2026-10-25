@@ -22,9 +22,9 @@ export function SampleSelector({
       <div className="flex items-center justify-between mb-3">
         <div className="flex items-center gap-2">
           <FileAudio className="w-4 h-4 text-slate-700" />
-          <h3 className="text-sm font-semibold text-slate-900">Preloaded Benchmarks</h3>
+          <h3 className="text-sm font-semibold text-slate-900">Try an Example Discussion</h3>
         </div>
-        <span className="text-xs text-slate-500">1-Click Evaluation</span>
+        <span className="text-xs text-slate-500">Instant test</span>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
