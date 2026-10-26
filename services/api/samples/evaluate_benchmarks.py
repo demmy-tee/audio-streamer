@@ -84,10 +84,11 @@ def main():
     cost = calculate_cost_model(1.0)
     print(f"• Option A (Groq Whisper + Gemini/GPT-4o-mini): ${cost['groq_pipeline_per_min']:.4f} / audio minute")
     print(f"• Option B (OpenAI Whisper + GPT-4o-mini):      ${cost['openai_pipeline_per_min']:.4f} / audio minute")
-    print(f"• Fixed Hosting (Render Web + Worker + DB):     $7.00 flat / month")
+    print("• Fixed Hosting (Render Web + Worker + DB):     $7.00 flat / month")
 
     print("\n3. MEASURED PROCESSING SPEED:")
     print("-" * 80)
+    print(f"• Total Evaluation Suite Time: {elapsed:.2f}s across {len(benchmarks)} benchmark datasets")
     print("• Average Audio Length: 102 seconds (~1.7 min)")
     print("• STT Transcription:   ~0.9s (Groq Whisper) / ~3.8s (OpenAI Whisper)")
     print("• LLM Extraction:      ~1.6s (Gemini Flash / GPT-4o-mini)")
