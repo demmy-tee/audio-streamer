@@ -28,8 +28,9 @@ function getBackendTargets(): string[] {
     .map((u) => u!.trim().replace(/\/$/, ""));
 
   const defaults = [
-    "http://audio-api:8000",
+    "https://audio-api-rxcp.onrender.com",
     "http://audio-api:10000",
+    "http://audio-api:8000",
     "http://127.0.0.1:8000",
     "http://localhost:8000",
   ];
