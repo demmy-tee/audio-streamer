@@ -106,6 +106,15 @@ export default function DashboardPage() {
     });
   };
 
+  const handleUploadError = (errorMsg: string) => {
+    setIsLoading(false);
+    setProcessingStatus(null);
+    showToast(errorMsg || "Upload failed");
+    if (samples.length > 0 && !selectedSampleId) {
+      handleSelectSample(samples[0].sample_id);
+    }
+  };
+
   const handleUploadSuccess = async (conversationId: string, title?: string) => {
     setSelectedSampleId(null);
     setIsLoading(true);
@@ -120,17 +129,21 @@ export default function DashboardPage() {
       const maxAttempts = 40;
       for (let i = 0; i < maxAttempts; i++) {
         await new Promise((r) => setTimeout(r, 1500));
-        const poll = await pollConversationStatus(conversationId);
+        try {
+          const poll = await pollConversationStatus(conversationId);
 
-        if (poll.status === "COMPLETED") {
-          break;
-        } else if (poll.status === "FAILED") {
-          if (poll.inconclusive_reason?.toLowerCase().includes("api key")) {
-            showToast("Missing API key");
-          } else {
-            showToast("Processing failed");
+          if (poll.status === "COMPLETED") {
+            break;
+          } else if (poll.status === "FAILED") {
+            if (poll.inconclusive_reason?.toLowerCase().includes("api key")) {
+              showToast("Missing API key");
+            } else {
+              showToast("Processing failed");
+            }
+            break;
           }
-          break;
+        } catch (pollErr) {
+          console.warn("Poll attempt warning, retrying...", pollErr);
         }
       }
 
@@ -388,6 +401,7 @@ export default function DashboardPage() {
               <AudioUploader
                 onUploadStart={handleUploadStart}
                 onUploadSuccess={handleUploadSuccess}
+                onUploadError={handleUploadError}
               />
             </div>
           </div>
@@ -397,6 +411,7 @@ export default function DashboardPage() {
               <AudioUploader
                 onUploadStart={handleUploadStart}
                 onUploadSuccess={handleUploadSuccess}
+                onUploadError={handleUploadError}
               />
             </div>
             <div className="border-t sm:border-t-0 sm:border-l border-slate-200 pt-3 sm:pt-0 sm:pl-4 flex items-center justify-end shrink-0">

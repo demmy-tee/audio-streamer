@@ -7,9 +7,14 @@ import { uploadAudio } from "../lib/api";
 interface AudioUploaderProps {
   onUploadStart?: (fileName: string) => void;
   onUploadSuccess: (conversationId: string, title?: string) => void;
+  onUploadError?: (error: string) => void;
 }
 
-export function AudioUploader({ onUploadStart, onUploadSuccess }: AudioUploaderProps) {
+export function AudioUploader({
+  onUploadStart,
+  onUploadSuccess,
+  onUploadError,
+}: AudioUploaderProps) {
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const [isUploading, setIsUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -26,7 +31,9 @@ export function AudioUploader({ onUploadStart, onUploadSuccess }: AudioUploaderP
       const result = await uploadAudio(file);
       onUploadSuccess(result.conversation_id, result.title);
     } catch (err: any) {
-      setError(err.message || "Failed to upload audio.");
+      const errorMsg = err.message || "Failed to upload audio.";
+      setError(errorMsg);
+      onUploadError?.(errorMsg);
     } finally {
       setIsUploading(false);
       if (fileInputRef.current) {
