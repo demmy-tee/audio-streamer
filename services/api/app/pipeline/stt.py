@@ -7,7 +7,6 @@ from pydantic import BaseModel
 from app.config import get_settings
 
 logger = logging.getLogger("api-stt")
-settings = get_settings()
 
 
 class MissingAPIKeyError(Exception):

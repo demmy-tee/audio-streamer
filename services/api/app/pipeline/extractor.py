@@ -8,7 +8,6 @@ from app.config import get_settings
 from app.pipeline.stt import STTSegment
 
 logger = logging.getLogger("api-extractor")
-settings = get_settings()
 
 
 class EvidenceCitationExtracted(BaseModel):
