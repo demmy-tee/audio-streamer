@@ -30,12 +30,21 @@ router = APIRouter(prefix="/api/v1/audio", tags=["Audio Streaming & Upload"])
 ALLOWED_MIME_TYPES = {
     "audio/wav",
     "audio/x-wav",
+    "audio/wave",
+    "audio/vnd.wave",
     "audio/mpeg",
     "audio/mp3",
     "audio/m4a",
     "audio/x-m4a",
+    "audio/mp4",
+    "video/mp4",
     "audio/ogg",
+    "audio/webm",
+    "audio/aac",
+    "audio/flac",
+    "application/octet-stream",
 }
+ALLOWED_EXTENSIONS = {".wav", ".mp3", ".m4a", ".ogg", ".webm", ".aac", ".flac"}
 MAX_FILE_SIZE = 25 * 1024 * 1024  # 25 MB max
 
 
@@ -67,10 +76,14 @@ async def upload_audio(
     4. Creates initial Conversation record in PostgreSQL.
     5. Dispatches background transcription and extraction task.
     """
-    if file.content_type and file.content_type not in ALLOWED_MIME_TYPES:
+    filename = file.filename or "recording.wav"
+    ext = Path(filename).suffix.lower()
+    is_valid_type = (file.content_type in ALLOWED_MIME_TYPES) or (ext in ALLOWED_EXTENSIONS)
+
+    if file.content_type and not is_valid_type:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"Unsupported file type: {file.content_type}. Supported: WAV, MP3, M4A, OGG.",
+            detail=f"Unsupported file type: {file.content_type}. Supported: WAV, MP3, M4A, OGG, WEBM.",
         )
 
     file_bytes = await file.read()

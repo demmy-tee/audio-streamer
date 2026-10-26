@@ -53,6 +53,18 @@ async function proxyRequest(request: NextRequest, pathParts: string[], method: s
   const search = urlObj.search;
   const targets = getBackendTargets();
 
+  let body: ArrayBuffer | undefined = undefined;
+  if (method === "POST" || method === "PUT" || method === "PATCH") {
+    try {
+      const buf = await request.arrayBuffer();
+      if (buf && buf.byteLength > 0) {
+        body = buf;
+      }
+    } catch {
+      body = undefined;
+    }
+  }
+
   let lastError: any = null;
 
   for (const base of targets) {
@@ -69,11 +81,6 @@ async function proxyRequest(request: NextRequest, pathParts: string[], method: s
 
       const accept = request.headers.get("accept");
       if (accept) headers.set("accept", accept);
-
-      let body: any = undefined;
-      if (method === "POST" || method === "PUT" || method === "PATCH") {
-        body = await request.arrayBuffer();
-      }
 
       const res = await fetch(targetUrl, {
         method,
