@@ -15,12 +15,9 @@ services:
         fromService:
           type: web
           name: audio-api
-          property: url
+          property: hostport
       - key: NEXT_PUBLIC_API_URL
-        fromService:
-          type: web
-          name: audio-api
-          property: url
+        value: ""
 
   # 2. FastAPI Web API & Streaming Service - 100% Free ($0.00)
   - type: web
