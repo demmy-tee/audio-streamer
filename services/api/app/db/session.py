@@ -20,6 +20,15 @@ if DATABASE_URL.startswith("postgres://"):
 elif DATABASE_URL.startswith("postgresql://") and not DATABASE_URL.startswith("postgresql+asyncpg://"):
     DATABASE_URL = DATABASE_URL.replace("postgresql://", "postgresql+asyncpg://", 1)
 
+# asyncpg does not support 'sslmode' query param (uses 'ssl' instead)
+if "sslmode=" in DATABASE_URL:
+    DATABASE_URL = DATABASE_URL.replace("sslmode=", "ssl=")
+
+# Ensure SSL is enabled for remote Render managed PostgreSQL instances
+if any(marker in DATABASE_URL for marker in ["dpg-", ".render.com"]) and "ssl=" not in DATABASE_URL:
+    separator = "&" if "?" in DATABASE_URL else "?"
+    DATABASE_URL = f"{DATABASE_URL}{separator}ssl=require"
+
 # Async engine with connection pooling
 engine = create_async_engine(
     DATABASE_URL,

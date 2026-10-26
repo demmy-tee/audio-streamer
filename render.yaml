@@ -12,7 +12,10 @@ services:
       - key: NODE_ENV
         value: production
       - key: INTERNAL_API_URL
-        value: "http://audio-api:8000"
+        fromService:
+          type: web
+          name: audio-api
+          property: hostport
       - key: NEXT_PUBLIC_API_URL
         value: ""
 

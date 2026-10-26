@@ -17,20 +17,27 @@ settings = get_settings()
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # 1. Initialize database tables on startup
-    async with engine.begin() as conn:
-        await conn.run_sync(Base.metadata.create_all)
+    # 1. Initialize database tables on startup (with graceful fallback if DB is waking up)
+    try:
+        async with engine.begin() as conn:
+            await conn.run_sync(Base.metadata.create_all)
+        logger.info("Database connection and tables verified.")
+    except Exception as e:
+        logger.warning(f"Initial database connection deferred: {e}")
 
-    # 2. Ensure MinIO S3 bucket exists
+    # 2. Ensure MinIO S3 bucket exists (with local disk fallback)
     try:
         await storage_service.ensure_bucket_exists()
     except Exception as e:
-        logger.warning(f"MinIO initialization deferred (will retry on first upload): {e}")
+        logger.warning(f"Storage initialization deferred: {e}")
 
     yield
 
     # Cleanup connection pool on shutdown
-    await engine.dispose()
+    try:
+        await engine.dispose()
+    except Exception:
+        pass
 
 
 app = FastAPI(
