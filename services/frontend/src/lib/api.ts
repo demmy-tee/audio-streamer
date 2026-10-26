@@ -257,20 +257,15 @@ export function getAudioStreamUrl(conversationId: string): string {
 }
 
 export async function fetchSamples(): Promise<SampleSummary[]> {
-  try {
-    const res = await fetch(`${API_BASE_URL}/api/v1/samples`, {
-      cache: "no-store",
-    });
-    if (res.ok) {
-      return await res.json();
-    }
-  } catch (err) {
-    console.warn("Backend samples endpoint failed, using fallback:", err);
-  }
   return FALLBACK_SAMPLE_SUMMARIES;
 }
 
 export async function loadSample(sampleId: string): Promise<ConversationDetail> {
+  // If it's a known benchmark sample, return it immediately without risking 503 on cold boots
+  if (FALLBACK_BENCHMARKS[sampleId]) {
+    return FALLBACK_BENCHMARKS[sampleId];
+  }
+
   try {
     const res = await fetch(`${API_BASE_URL}/api/v1/samples/${sampleId}/load`, {
       method: "POST",
@@ -280,12 +275,9 @@ export async function loadSample(sampleId: string): Promise<ConversationDetail> 
       return await res.json();
     }
   } catch (err) {
-    console.warn(`Backend seed for ${sampleId} failed, using local benchmark:`, err);
+    console.warn(`Backend seed for ${sampleId} failed:`, err);
   }
 
-  if (FALLBACK_BENCHMARKS[sampleId]) {
-    return FALLBACK_BENCHMARKS[sampleId];
-  }
   throw new Error(`Failed to load sample ${sampleId}`);
 }
 
@@ -314,17 +306,40 @@ export async function uploadAudio(
   const formData = new FormData();
   formData.append("file", file);
 
-  const res = await fetch(`${API_BASE_URL}/api/v1/audio/upload`, {
-    method: "POST",
-    body: formData,
-  });
+  const endpoint = `${API_BASE_URL}/api/v1/audio/upload`;
+  let lastErrorMsg = "Upload failed. Backend may still be starting up, please try again.";
 
-  if (!res.ok) {
-    const errorData = await res.json().catch(() => ({}));
-    throw new Error(errorData.detail || "Upload failed. Backend may still be starting up, please try again in a few moments.");
+  // Retry up to 3 times with 5s backoff if the backend is cold-booting on Render free tier
+  for (let attempt = 1; attempt <= 3; attempt++) {
+    try {
+      const res = await fetch(endpoint, {
+        method: "POST",
+        body: formData,
+      });
+
+      if (res.ok) {
+        return await res.json();
+      }
+
+      if (res.status === 503 && attempt < 3) {
+        await new Promise((r) => setTimeout(r, 5000));
+        continue;
+      }
+
+      const errorData = await res.json().catch(() => ({}));
+      lastErrorMsg = errorData.detail || `Upload failed (status ${res.status})`;
+      break;
+    } catch (err: any) {
+      lastErrorMsg = err.message || "Network request failed";
+      if (attempt < 3) {
+        await new Promise((r) => setTimeout(r, 5000));
+        continue;
+      }
+      break;
+    }
   }
 
-  return res.json();
+  throw new Error(lastErrorMsg);
 }
 
 export async function pollConversationStatus(conversationId: string): Promise<{
