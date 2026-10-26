@@ -15,9 +15,12 @@ services:
         fromService:
           type: web
           name: audio-api
-          property: hostport
+          property: url
       - key: NEXT_PUBLIC_API_URL
-        value: ""
+        fromService:
+          type: web
+          name: audio-api
+          property: url
 
   # 2. FastAPI Web API & Streaming Service - 100% Free ($0.00)
   - type: web
@@ -30,7 +33,7 @@ services:
     healthCheckPath: /healthz
     envVars:
       - key: PORT
-        value: 8000
+        value: 10000
       - key: ENVIRONMENT
         value: production
       - key: DATABASE_URL
