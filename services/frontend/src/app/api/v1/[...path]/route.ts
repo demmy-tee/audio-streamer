@@ -89,6 +89,7 @@ async function proxyRequest(request: NextRequest, pathParts: string[], method: s
         cache: "no-store",
         // @ts-ignore - duplex is needed for streaming body in Node fetch
         duplex: body ? "half" : undefined,
+        signal: AbortSignal.timeout(60000),
       });
 
       // If backend returned a response (even 4xx/5xx from API), return it
