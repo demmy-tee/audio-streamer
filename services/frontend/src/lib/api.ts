@@ -231,14 +231,15 @@ function getApiBaseUrl(): string {
       }
       return raw;
     }
-    return "";
+    // Production Render deployment default
+    return "https://audio-api-rxcp.onrender.com";
   }
 
   const serverUrl =
     process.env.INTERNAL_API_URL?.trim() ||
     process.env.BACKEND_URL?.trim() ||
     process.env.NEXT_PUBLIC_API_URL?.trim() ||
-    "http://127.0.0.1:8000";
+    "https://audio-api-rxcp.onrender.com";
 
   let formatted = serverUrl.replace(/\/$/, "");
   if (!formatted.startsWith("http://") && !formatted.startsWith("https://")) {

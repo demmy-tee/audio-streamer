@@ -12,12 +12,9 @@ services:
       - key: NODE_ENV
         value: production
       - key: INTERNAL_API_URL
-        fromService:
-          type: web
-          name: audio-api
-          property: hostport
+        value: "https://audio-api-rxcp.onrender.com"
       - key: NEXT_PUBLIC_API_URL
-        value: ""
+        value: "https://audio-api-rxcp.onrender.com"
 
   # 2. FastAPI Web API & Streaming Service - 100% Free ($0.00)
   - type: web
