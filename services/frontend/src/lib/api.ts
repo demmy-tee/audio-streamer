@@ -222,33 +222,8 @@ export const FALLBACK_BENCHMARKS: Record<string, ConversationDetail> = {
   },
 };
 
-function getApiBaseUrl(): string {
-  if (typeof window !== "undefined") {
-    const raw = process.env.NEXT_PUBLIC_API_URL?.trim().replace(/\/$/, "");
-    if (raw && (raw.includes(".") || raw.includes("localhost"))) {
-      if (!raw.startsWith("http://") && !raw.startsWith("https://")) {
-        return `https://${raw}`;
-      }
-      return raw;
-    }
-    // Production Render deployment default
-    return "https://audio-api-rxcp.onrender.com";
-  }
-
-  const serverUrl =
-    process.env.INTERNAL_API_URL?.trim() ||
-    process.env.BACKEND_URL?.trim() ||
-    process.env.NEXT_PUBLIC_API_URL?.trim() ||
-    "https://audio-api-rxcp.onrender.com";
-
-  let formatted = serverUrl.replace(/\/$/, "");
-  if (!formatted.startsWith("http://") && !formatted.startsWith("https://")) {
-    formatted = `http://${formatted}`;
-  }
-  return formatted;
-}
-
-const API_BASE_URL = getApiBaseUrl();
+export const API_BASE_URL =
+  process.env.NEXT_PUBLIC_API_URL?.trim() || "https://audio-api-rxcp.onrender.com";
 
 export function getAudioStreamUrl(conversationId: string): string {
   if (conversationId.startsWith("sample_")) {
@@ -308,39 +283,22 @@ export async function uploadAudio(
   formData.append("file", file);
 
   const endpoint = `${API_BASE_URL}/api/v1/audio/upload`;
-  let lastErrorMsg = "Upload failed. Backend may still be starting up, please try again.";
 
-  // Retry up to 3 times with 5s backoff if the backend is cold-booting on Render free tier
-  for (let attempt = 1; attempt <= 3; attempt++) {
-    try {
-      const res = await fetch(endpoint, {
-        method: "POST",
-        body: formData,
-      });
+  try {
+    const res = await fetch(endpoint, {
+      method: "POST",
+      body: formData,
+    });
 
-      if (res.ok) {
-        return await res.json();
-      }
-
-      if (res.status === 503 && attempt < 3) {
-        await new Promise((r) => setTimeout(r, 5000));
-        continue;
-      }
-
+    if (!res.ok) {
       const errorData = await res.json().catch(() => ({}));
-      lastErrorMsg = errorData.detail || `Upload failed (status ${res.status})`;
-      break;
-    } catch (err: any) {
-      lastErrorMsg = err.message || "Network request failed";
-      if (attempt < 3) {
-        await new Promise((r) => setTimeout(r, 5000));
-        continue;
-      }
-      break;
+      throw new Error(errorData.detail || `Upload rejected by backend (HTTP ${res.status})`);
     }
-  }
 
-  throw new Error(lastErrorMsg);
+    return await res.json();
+  } catch (err: any) {
+    throw new Error(err.message || "Failed to upload audio to backend service.");
+  }
 }
 
 export async function pollConversationStatus(conversationId: string): Promise<{

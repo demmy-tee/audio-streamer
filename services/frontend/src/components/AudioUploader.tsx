@@ -53,7 +53,7 @@ export function AudioUploader({
         <input
           ref={fileInputRef}
           type="file"
-          accept="audio/wav,audio/mp3,audio/mpeg,audio/m4a,audio/ogg"
+          accept="audio/*,.wav,.mp3,.m4a,.ogg,.webm,.aac,.flac"
           onChange={handleFileChange}
           className="hidden"
           id="audio-upload-input"
