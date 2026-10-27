@@ -35,6 +35,7 @@ export default function DashboardPage() {
   const [jumpTarget, setJumpTarget] = useState<{ timeMs: number; nonce: number } | null>(null);
   const [activeTab, setActiveTab] = useState<"commitments" | "proposals">("commitments");
   const [toastMessage, setToastMessage] = useState<string | null>(null);
+  const [uploadError, setUploadError] = useState<string | null>(null);
 
   const showToast = (msg: string) => {
     setToastMessage(msg);
@@ -70,6 +71,7 @@ export default function DashboardPage() {
 
   const handleSelectSample = async (sampleId: string) => {
     setSelectedSampleId(sampleId);
+    setUploadError(null);
     setIsLoading(true);
     setProcessingStatus("Loading discussion...");
     try {
@@ -85,7 +87,7 @@ export default function DashboardPage() {
   };
 
   const handleUploadStart = (fileName: string) => {
-    // Immediately hide benchmark selectors and switch to uploaded mode
+    setUploadError(null);
     setSelectedSampleId(null);
     setIsLoading(true);
     setProcessingStatus("Uploading audio file...");
@@ -109,10 +111,9 @@ export default function DashboardPage() {
   const handleUploadError = (errorMsg: string) => {
     setIsLoading(false);
     setProcessingStatus(null);
-    showToast(errorMsg || "Upload failed");
-    if (samples.length > 0 && !selectedSampleId) {
-      handleSelectSample(samples[0].sample_id);
-    }
+    const msg = errorMsg || "Upload failed. Please check backend connection.";
+    setUploadError(msg);
+    showToast(msg);
   };
 
   const handleUploadSuccess = async (conversationId: string, title?: string) => {
@@ -387,6 +388,20 @@ export default function DashboardPage() {
 
       {/* Input / Control Row */}
       <div className="mb-6">
+        {uploadError && (
+          <div className="mb-4 p-3.5 bg-rose-50 border border-rose-200 rounded-lg flex items-center justify-between text-rose-800 text-xs shadow-sm">
+            <div className="flex items-center gap-2.5">
+              <AlertCircle className="w-4 h-4 text-rose-600 shrink-0" />
+              <span className="font-medium">{uploadError}</span>
+            </div>
+            <button
+              onClick={() => setUploadError(null)}
+              className="text-xs font-semibold px-2.5 py-1 rounded bg-rose-100 hover:bg-rose-200 text-rose-700 transition shrink-0 ml-3"
+            >
+              Dismiss
+            </button>
+          </div>
+        )}
         {selectedSampleId !== null ? (
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
             <div className="lg:col-span-2">
